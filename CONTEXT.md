@@ -19,3 +19,15 @@ _Avoid_: Upload date, approximate date, era
 **Undated item**:
 An item with no Capture date. It appears in the Undated section instead of on the Timeline.
 _Avoid_: Unknown date, missing date
+
+**Tag**:
+A word or short phrase describing what an item shows (for example, "beach" or "birthday cake"). Any family member can add or remove one.
+_Avoid_: Label, keyword, category
+
+**AI tag**:
+A Tag generated automatically from a photo's contents and marked as such. Videos never get AI tags.
+_Avoid_: Auto tag, machine label
+
+**Family tag**:
+A Tag added by a family member.
+_Avoid_: Manual tag, user tag
