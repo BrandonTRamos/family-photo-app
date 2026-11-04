@@ -13,7 +13,7 @@ A named group of items from the Archive, made by a family member (for example, "
 _Avoid_: Folder, collection, story
 
 **Capture date**:
-The exact date and time an item was taken. It places the item on the Timeline. There are no approximate dates.
+The exact date an item was taken, read from the file or entered by a family member for an Undated item. It places the item on the Timeline. There are no approximate dates.
 _Avoid_: Upload date, approximate date, era
 
 **Undated item**:
