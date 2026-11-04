@@ -9,5 +9,5 @@ The single shared collection holding every photo and video the family has added.
 _Avoid_: Library, album (for the whole collection), gallery
 
 **Album**:
-A named collection of items from the Archive, made by a family member (for example, "Lake trip 2019").
+A named group of items from the Archive, made by a family member (for example, "Lake trip 2019"). Each item belongs to at most one Album.
 _Avoid_: Folder, collection, story
