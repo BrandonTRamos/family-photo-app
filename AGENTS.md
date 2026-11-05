@@ -4,6 +4,12 @@
 
 All messages to the user should be concise. Sacrifice grammar for concision.
 
+## Git
+
+- `main` is what Amplify deploys; every push to it goes live.
+- Work on a branch, then fast-forward `main` to it and push. Do this only after the user approves that specific push in chat.
+- No pull requests: the user doesn't review them. Never force-push `main`.
+
 ## Agent skills
 
 ### Issue tracker
