@@ -146,13 +146,22 @@ export class BedrockTagger implements AiTagger {
   }
 }
 
+/**
+ * Pulls the tag list out of the model's reply: {"tags":[...]}, or a bare list, even inside prose or a code fence.
+ * Throws when there is none, so the photo is retried (and the reply logged) instead of being marked tagged.
+ */
 export function parseTagJson(text: string): string[] {
-  const match = /\{[\s\S]*\}/.exec(text);
-  if (!match) return [];
-  try {
-    const parsed = JSON.parse(match[0]) as { tags?: unknown };
-    return Array.isArray(parsed.tags) ? parsed.tags.filter((t): t is string => typeof t === 'string') : [];
-  } catch {
-    return [];
+  const candidates = [/\{[\s\S]*\}/.exec(text)?.[0], /\[[\s\S]*\]/.exec(text)?.[0]];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      const list = Array.isArray(parsed) ? parsed : (parsed as { tags?: unknown })?.tags;
+      const tags = Array.isArray(list) ? list.filter((t): t is string => typeof t === 'string' && t.trim() !== '') : [];
+      if (tags.length) return tags;
+    } catch {
+      // try the next shape
+    }
   }
+  throw new Error(`AI model reply had no tags: ${JSON.stringify(text.slice(0, 500))}`);
 }
