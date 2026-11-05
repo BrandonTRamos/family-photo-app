@@ -138,10 +138,22 @@ describe('uploading', () => {
 
   it('sends large files in parts that can be retried, then assembles them', async () => {
     const big = mp4({ createdUtc: '2026-07-04T18:00:00Z', payloadBytes: 200 * 1024 });
-    const { ids, results } = await h.upload(rosa, [{ name: 'fireworks.mp4', type: 'video/mp4', bytes: big }]);
-    const result = results[0];
-    expect(result.ok && result.grant.mode).toBe('multipart');
+    h.failStorageSends(1);
+    const { ids } = await h.upload(rosa, [{ name: 'fireworks.mp4', type: 'video/mp4', bytes: big }]);
+    expect(h.staging.multipartCompleted).toBe(1);
     expect(h.staging.objects.get(`uploads/${ids[0]}/original`)?.body.equals(big)).toBe(true);
+  });
+
+  it('retrying a failed upload finishes the same item instead of starting another', async () => {
+    const files = [{ name: 'a.jpg', type: 'image/jpeg', bytes: await photo({ dateTimeOriginal: '2026:10:26 14:03:00' }) }];
+    const screen = h.uploader(rosa);
+    h.failStorageSends(4); // more than the client's own retries
+    const [first] = await screen.send(files);
+    expect(first.ok).toBe(false);
+    const [second] = await screen.send(files);
+    expect(second).toMatchObject({ ok: true, itemId: first.itemId });
+    await h.drain();
+    expect((await h.get<TimelineDto>(rosa, '/timeline')).body.months[0].count).toBe(1);
   });
 
   it('lets only the uploader finish their upload', async () => {

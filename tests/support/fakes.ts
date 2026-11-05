@@ -17,6 +17,7 @@ export class MemoryBlobStore implements BlobStore {
   readonly objects = new Map<string, { body: Buffer; contentType: string }>();
   private readonly uploads = new Map<string, { key: string; parts: Map<number, Buffer> }>();
   private nextUpload = 1;
+  multipartCompleted = 0;
 
   constructor(
     readonly name: string,
@@ -53,6 +54,7 @@ export class MemoryBlobStore implements BlobStore {
     });
     this.objects.set(key, { body: Buffer.concat(chunks), contentType: 'application/octet-stream' });
     this.uploads.delete(uploadId);
+    this.multipartCompleted++;
   }
 
   /** What a browser PUT to a grant URL does. Returns the part's ETag. */

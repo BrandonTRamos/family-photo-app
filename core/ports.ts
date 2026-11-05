@@ -44,9 +44,9 @@ export interface BlobStore {
   createUploadGrant(key: string, contentType: string, size: number): Promise<UploadGrant>;
   completeMultipart(key: string, uploadId: string, parts: { partNumber: number; etag: string }[]): Promise<void>;
   head(key: string): Promise<{ size: number } | undefined>;
-  read(key: string): Promise<Buffer>;
-  readRange(key: string, start: number, endInclusive: number): Promise<Buffer>;
-  write(key: string, body: Buffer, contentType: string): Promise<void>;
+  read(key: string): Promise<Uint8Array>;
+  readRange(key: string, start: number, endInclusive: number): Promise<Uint8Array>;
+  write(key: string, body: Uint8Array, contentType: string): Promise<void>;
   delete(key: string): Promise<void>;
   signedGetUrl(key: string, expiresInSeconds: number): Promise<string>;
 }
@@ -57,7 +57,7 @@ export interface Queue<M> {
 
 export interface AiTagger {
   /** Returns open-ended tags for what the image shows. Never names or relationships. */
-  tag(image: Buffer, contentType: string): Promise<{ tags: string[]; model: string }>;
+  tag(image: Uint8Array, contentType: string): Promise<{ tags: string[]; model: string }>;
 }
 
 export type TranscodeStatus = 'SUBMITTED' | 'PROGRESSING' | 'COMPLETE' | 'ERROR' | 'CANCELED';
@@ -77,20 +77,20 @@ export interface VideoOutputs {
 }
 
 export interface ProcessedImage {
-  display: { bytes: Buffer; width: number; height: number };
-  thumb: { bytes: Buffer; width: number; height: number };
+  display: { bytes: Uint8Array; width: number; height: number };
+  thumb: { bytes: Uint8Array; width: number; height: number };
 }
 
 export interface ImageProcessor {
   /** Auto-orients, compresses and strips metadata (including GPS). Throws on unreadable input. */
-  process(bytes: Buffer): Promise<ProcessedImage>;
+  process(bytes: Uint8Array): Promise<ProcessedImage>;
   /** Small copy for AI tagging. */
-  forAi(bytes: Buffer): Promise<Buffer>;
+  forAi(bytes: Uint8Array): Promise<Uint8Array>;
 }
 
 export interface MetadataReader {
-  photoCapture(bytes: Buffer): Promise<CaptureDate | undefined>;
-  videoCapture(read: (start: number, endInclusive: number) => Promise<Buffer>, size: number): Promise<CaptureDate | undefined>;
+  photoCapture(bytes: Uint8Array): Promise<CaptureDate | undefined>;
+  videoCapture(read: (start: number, endInclusive: number) => Promise<Uint8Array>, size: number): Promise<CaptureDate | undefined>;
 }
 
 export interface Clock {

@@ -7,7 +7,7 @@ import '@aws-amplify/ui-react/styles.css';
 import './styles.css';
 import { App } from './App';
 import { HttpApiClient } from './api';
-import { DemoApiClient } from './demo';
+import { createDemoApi } from './demo';
 
 // amplify_outputs.json exists only after `npx ampx sandbox` or an Amplify Hosting deploy.
 const found = import.meta.glob<{ default: Record<string, any> }>('../amplify_outputs.json', { eager: true });
@@ -29,7 +29,7 @@ if (outputs && apiUrl) {
 } else {
   root.render(
     <StrictMode>
-      <App api={new DemoApiClient()} demo />
+      <App api={createDemoApi()} demo />
     </StrictMode>,
   );
 }

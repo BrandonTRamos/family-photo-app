@@ -43,15 +43,29 @@ export class ApiError extends Error {
   }
 }
 
+export interface HttpOptions {
+  /** Defaults to the browser's fetch; the preview and tests pass an in-process one. */
+  fetch?: typeof fetch;
+  /** First wait before retrying a failed storage send; doubles each time. */
+  retryDelayMs?: number;
+}
+
 export class HttpApiClient implements ApiClient {
+  private readonly fetch: typeof fetch;
+  private readonly retryDelayMs: number;
+
   constructor(
     private readonly baseUrl: string,
     private readonly token: () => Promise<string | undefined>,
-  ) {}
+    opts: HttpOptions = {},
+  ) {
+    this.fetch = opts.fetch ?? ((input, init) => fetch(input, init));
+    this.retryDelayMs = opts.retryDelayMs ?? 1000;
+  }
 
   private async call<T>(method: string, path: string, body?: unknown): Promise<T> {
     const token = await this.token();
-    const res = await fetch(this.baseUrl.replace(/\/$/, '') + path, {
+    const res = await this.fetch(this.baseUrl.replace(/\/$/, '') + path, {
       method,
       headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -122,8 +136,8 @@ export class HttpApiClient implements ApiClient {
   /** Sends straight to storage. Large files go in parts, each retried, so a flaky connection need not restart. */
   async sendFile(grant: UploadGrantDto, file: File, onProgress: (fraction: number) => void): Promise<Parts | undefined> {
     if (grant.mode === 'single') {
-      await withRetries(async () => {
-        const res = await fetch(grant.url, { method: 'PUT', headers: grant.headers, body: file });
+      await this.withRetries(async () => {
+        const res = await this.fetch(grant.url, { method: 'PUT', headers: grant.headers, body: file });
         if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       });
       onProgress(1);
@@ -133,8 +147,8 @@ export class HttpApiClient implements ApiClient {
     for (const part of grant.parts) {
       const start = (part.partNumber - 1) * grant.partSize;
       const chunk = file.slice(start, start + grant.partSize);
-      const etag = await withRetries(async () => {
-        const res = await fetch(part.url, { method: 'PUT', body: chunk });
+      const etag = await this.withRetries(async () => {
+        const res = await this.fetch(part.url, { method: 'PUT', body: chunk });
         const tag = res.headers.get('etag');
         if (!res.ok || !tag) throw new Error(`Upload failed (${res.status})`);
         return tag;
@@ -144,17 +158,17 @@ export class HttpApiClient implements ApiClient {
     }
     return parts;
   }
-}
 
-async function withRetries<T>(run: () => Promise<T>, attempts = 4): Promise<T> {
-  let last: unknown;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await run();
-    } catch (err) {
-      last = err;
-      await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
+  private async withRetries<T>(run: () => Promise<T>, attempts = 4): Promise<T> {
+    let last: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await run();
+      } catch (err) {
+        last = err;
+        if (i < attempts - 1) await new Promise((r) => setTimeout(r, this.retryDelayMs * 2 ** i));
+      }
     }
+    throw last;
   }
-  throw last;
 }

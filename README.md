@@ -6,14 +6,14 @@ A private, shared place for the family's photos and videos. Browse by a Timeline
 
 - `core/`: domain types, Item rules (`item.ts`: lifecycle, placement, Tags), use cases (`archive.ts`), processing and AI tagging (`pipeline.ts`), Lambda handlers, and adapters (DynamoDB, S3, SQS, Bedrock, MediaConvert, sharp, exifr). `core/api-types.ts` is the HTTP contract shared with the web app.
 - `amplify/`: Amplify Gen 2 backend. Auth via `defineAuth`; everything else is CDK in `archive-resources.ts`.
-- `src/`: React web app in the Warm keepsake design. Runs in demo mode with sample photos when no backend is configured.
+- `src/`: React web app in the Warm keepsake design. Runs in demo mode with sample photos when no backend is configured: the real Archive and HTTP API run in the page on in-memory adapters (`src/demo.ts`), with media processing stood in for.
 - `tests/`: tests through the HTTP API, with the workers running behind it.
 
 ## Develop
 
 ```sh
 npm install
-npm test          # API-level tests (local DynamoDB emulator, real sharp, fake Bedrock and MediaConvert)
+npm test          # API-level tests through the real web client, run twice: DynamoDB emulator, then the in-memory Repository
 npm run typecheck
 npm run dev       # web app; demo mode until amplify_outputs.json exists
 ```

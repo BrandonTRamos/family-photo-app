@@ -127,7 +127,7 @@ export class Pipeline {
     await this.d.repo.updateItem(item.id, (it) => failItem(it, reason));
   }
 
-  private async writeVerified(key: string, bytes: Buffer): Promise<void> {
+  private async writeVerified(key: string, bytes: Uint8Array): Promise<void> {
     await this.d.media.write(key, bytes, 'image/jpeg');
     const head = await this.d.media.head(key);
     if (head?.size !== bytes.length) throw new Error(`Output ${key} did not verify`);
@@ -145,6 +145,6 @@ export class Pipeline {
   }
 }
 
-function sha256(bytes: Buffer): string {
+function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import exifr from 'exifr';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PHOTO_TYPES, VIDEO_TYPES } from '../../core/api-types';
 import { ErrorNotice, useApi, useLoad } from '../components';
 import { duration, shortDate } from '../format';
 import { CloseIcon, SparkleIcon, UploadIcon } from '../icons';
 import { href } from '../router';
+import { readFileDate } from '../file-date';
+import { UploadSession } from '../upload-session';
 
 interface Selected {
   key: string;
@@ -23,20 +24,9 @@ interface Selected {
 
 const ACCEPT = [...PHOTO_TYPES, ...VIDEO_TYPES].join(',');
 
-async function readFileDate(file: File): Promise<string | null> {
-  if (!file.type.startsWith('image/')) return null;
-  try {
-    const tags = await exifr.parse(file, { pick: ['DateTimeOriginal', 'CreateDate'], reviveValues: false });
-    const raw = (tags?.DateTimeOriginal ?? tags?.CreateDate) as string | undefined;
-    const m = raw && /^(\d{4}):(\d{2}):(\d{2})/.exec(raw);
-    return m && m[1] !== '0000' ? `${m[1]}-${m[2]}-${m[3]}` : null;
-  } catch {
-    return null;
-  }
-}
-
 export function Upload() {
   const api = useApi();
+  const session = useMemo(() => new UploadSession(api), [api]);
   const albums = useLoad(() => api.albums(), []);
   const [files, setFiles] = useState<Selected[]>([]);
   const [albumId, setAlbumId] = useState('');
@@ -79,27 +69,18 @@ export function Upload() {
     if (!waiting.length) return;
     setBusy(true);
     setError(undefined);
+    for (const f of waiting) update(f.key, { state: 'sending', progress: 0, message: undefined });
     try {
-      const res = await api.requestUploads({
-        files: waiting.map((f) => ({ name: f.file.name, type: f.file.type, size: f.file.size, captureDate: f.chosenDate || undefined })),
-        albumId: albumId || undefined,
-      });
-      await Promise.all(
-        res.results.map(async (result, i) => {
-          const f = waiting[i];
-          if (!result.ok) return update(f.key, { state: 'failed', message: result.message });
-          update(f.key, { state: 'sending', itemId: result.itemId });
-          try {
-            const parts = await api.sendFile(result.grant, f.file, (progress) => update(f.key, { progress }));
-            await api.completeUpload(result.itemId, parts);
-            update(f.key, { state: 'done', progress: 1 });
-          } catch (e) {
-            update(f.key, { state: 'failed', message: (e as Error).message });
-          }
-        }),
+      const outcomes = await session.send(
+        waiting.map((f) => ({ key: f.key, file: f.file, captureDate: f.chosenDate || undefined })),
+        albumId || undefined,
+        (key, progress) => update(key, { progress }),
       );
+      for (const o of outcomes) {
+        update(o.key, o.ok ? { state: 'done', progress: 1, itemId: o.itemId } : { state: 'failed', message: o.message });
+      }
     } catch (e) {
-      setError((e as Error).message);
+      for (const f of waiting) update(f.key, { state: 'failed', message: (e as Error).message });
     } finally {
       setBusy(false);
     }
