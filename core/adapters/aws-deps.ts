@@ -8,7 +8,8 @@ import { randomUUID } from 'node:crypto';
 import { defaultConfig, type Deps, type ImageProcessor } from '../ports.js';
 import { FileMetadataReader } from '../media/metadata.js';
 import { DynamoRepository } from './dynamo-repository.js';
-import { BedrockTagger, MediaConvertTranscoder, S3BlobStore, SqsQueue } from './aws.js';
+import { BedrockTagger, S3BlobStore, SqsQueue } from './aws.js';
+import { MediaConvertTranscoder } from './mediaconvert.js';
 
 function env(name: string): string {
   const value = process.env[name];

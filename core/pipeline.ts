@@ -1,8 +1,9 @@
 // Background workers: processing (photos, videos) and photo AI tagging. Every step is safe to repeat.
 import { createHash } from 'node:crypto';
 import type { CaptureDate, Item, ItemMedia } from './domain.js';
+import { mediaLayout } from './media-layout.js';
 import { applyAiTags, captureFor, fail as failItem, needsAiTags, publish as publishItem, recordVideoJob } from './item.js';
-import type { Deps, ProcessingMessage, VideoOutputs } from './ports.js';
+import type { Deps, ProcessingMessage, VideoEvent, VideoOutputs } from './ports.js';
 
 export class Pipeline {
   constructor(private readonly d: Deps) {}
@@ -32,8 +33,8 @@ export class Pipeline {
     } catch {
       return this.fail(item, 'This file could not be opened as a photo.');
     }
-    const thumbKey = `items/${item.id}/thumb.jpg`;
-    const displayKey = `items/${item.id}/display.jpg`;
+    const thumbKey = mediaLayout.thumb(item.id);
+    const displayKey = mediaLayout.display(item.id);
     await this.writeVerified(displayKey, processed.display.bytes);
     await this.writeVerified(thumbKey, processed.thumb.bytes);
     if (processed.display.width <= 0 || processed.display.height <= 0) {
@@ -59,7 +60,7 @@ export class Pipeline {
     const { jobId } = await this.d.transcoder.submit({
       itemId: item.id,
       inputKey: item.stagingKey,
-      outputPrefix: `items/${item.id}/video/`,
+      outputFolder: mediaLayout.videoFolder(item.id),
     });
     const capture = captureFor(item, fileDate);
     const at = this.d.clock.now().toISOString();
@@ -73,7 +74,7 @@ export class Pipeline {
     if (job.status === 'ERROR' || job.status === 'CANCELED') return this.fail(item, 'The video could not be converted.');
   }
 
-  private async videoEvent(msg: Extract<ProcessingMessage, { kind: 'video' }>): Promise<void> {
+  private async videoEvent(msg: VideoEvent): Promise<void> {
     const item = await this.d.repo.getItem(msg.itemId);
     if (!item || item.kind !== 'video') return;
     if (item.status === 'ready') return this.afterPublish(item);
@@ -96,7 +97,7 @@ export class Pipeline {
     } catch {
       return this.fail(item, 'The video poster could not be read.');
     }
-    const thumbKey = `items/${item.id}/thumb.jpg`;
+    const thumbKey = mediaLayout.thumb(item.id);
     await this.writeVerified(thumbKey, thumb.bytes);
     await this.publish(item.id, item.capture, {
       thumbKey,

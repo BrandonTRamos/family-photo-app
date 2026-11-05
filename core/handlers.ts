@@ -2,7 +2,6 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2, SQSBatchResponse, SQSHandler } from 'aws-lambda';
 import { Archive } from './archive.js';
 import { DomainError, type Person } from './domain.js';
-import { parseMediaConvertEvent } from './mediaconvert-events.js';
 import { Pipeline } from './pipeline.js';
 import type { Deps, ProcessingMessage } from './ports.js';
 
@@ -76,7 +75,7 @@ export function makeProcessingHandler(deps: Deps): SQSHandler {
   const pipeline = new Pipeline(deps);
   return batch((body) => {
     const parsed = JSON.parse(body);
-    const msg: ProcessingMessage | undefined = parsed?.kind === 'ingest' ? parsed : parseMediaConvertEvent(parsed);
+    const msg: ProcessingMessage | undefined = parsed?.kind === 'ingest' ? parsed : deps.transcoder.parseEvent(parsed);
     if (!msg) {
       console.warn('Ignoring unrecognized processing message');
       return Promise.resolve();

@@ -29,6 +29,7 @@ import {
   type UploadResultDto,
 } from './api-types.js';
 import type { Deps } from './ports.js';
+import { mediaLayout } from './media-layout.js';
 
 const MAX_FILES_PER_UPLOAD = 50;
 const MAX_ALBUM_NAME = 60;
@@ -88,7 +89,7 @@ export class Archive {
     }
 
     const id = this.d.ids.next();
-    const stagingKey = `uploads/${id}/original`;
+    const stagingKey = mediaLayout.original(id);
     const grant = await this.d.staging.createUploadGrant(stagingKey, type, size);
     await this.d.repo.createItem(
       newUpload({

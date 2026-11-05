@@ -7,9 +7,11 @@ import type {
   Queue,
   TranscodeStatus,
   UploadGrant,
+  VideoEvent,
   VideoOutputs,
   VideoTranscoder,
 } from '../../core/ports.js';
+import { mediaConvertOutputKeys, parseMediaConvertEvent } from '../../core/adapters/mediaconvert.js';
 
 export class MemoryBlobStore implements BlobStore {
   readonly objects = new Map<string, { body: Buffer; contentType: string }>();
@@ -130,12 +132,12 @@ interface FakeJob {
   jobId: string;
   itemId: string;
   inputKey: string;
-  outputPrefix: string;
+  outputFolder: string;
   status: TranscodeStatus;
   outputs?: VideoOutputs;
 }
 
-/** Emits MediaConvert-shaped EventBridge events, so the real event parser is exercised. */
+/** Names outputs and emits EventBridge events exactly like MediaConvert, so the real naming and parser are exercised. */
 export class FakeTranscoder implements VideoTranscoder {
   readonly jobs = new Map<string, FakeJob>();
   submitCalls = 0;
@@ -146,7 +148,7 @@ export class FakeTranscoder implements VideoTranscoder {
     private readonly mediaBucket = 'media-bucket',
   ) {}
 
-  async submit(req: { itemId: string; inputKey: string; outputPrefix: string }) {
+  async submit(req: { itemId: string; inputKey: string; outputFolder: string }) {
     this.submitCalls++;
     const existing = [...this.jobs.values()].find((j) => j.itemId === req.itemId);
     if (existing) return { jobId: existing.jobId };
@@ -161,12 +163,15 @@ export class FakeTranscoder implements VideoTranscoder {
     return { status: job.status, outputs: job.outputs };
   }
 
+  /** Same events as MediaConvert, so the real parser reads them. */
+  parseEvent(event: unknown): VideoEvent | undefined {
+    return parseMediaConvertEvent(event);
+  }
+
   /** Simulate MediaConvert finishing: write outputs and emit the completion event. */
   async finish(jobId: string, opts: { durationMs?: number; writeOutputs?: boolean } = {}): Promise<void> {
     const job = this.jobs.get(jobId)!;
-    const base = job.outputPrefix + 'original';
-    const videoKey = `${base}-1080p.mp4`;
-    const posterKey = `${base}-poster.0000000.jpg`;
+    const { videoKey, posterKey } = mediaConvertOutputKeys(job.outputFolder, job.inputKey);
     if (opts.writeOutputs !== false) {
       await this.media.write(videoKey, Buffer.from('mp4-bytes'), 'video/mp4');
       const poster = await sharp({ create: { width: 1280, height: 720, channels: 3, background: '#f2c7a5' } }).jpeg().toBuffer();

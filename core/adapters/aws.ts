@@ -12,8 +12,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
-import { CreateJobCommand, GetJobCommand, MediaConvertClient } from '@aws-sdk/client-mediaconvert';
-import type { AiTagger, BlobStore, Queue, TranscodeStatus, UploadGrant, VideoOutputs, VideoTranscoder } from '../ports.js';
+import type { AiTagger, BlobStore, Queue, UploadGrant } from '../ports.js';
 import { MAX_AI_TAGS } from '../item.js';
 
 const UPLOAD_URL_TTL = 6 * 3600;
@@ -155,111 +154,5 @@ export function parseTagJson(text: string): string[] {
     return Array.isArray(parsed.tags) ? parsed.tags.filter((t): t is string => typeof t === 'string') : [];
   } catch {
     return [];
-  }
-}
-
-export interface MediaConvertConfig {
-  roleArn: string;
-  stagingBucket: string;
-  mediaBucket: string;
-  appTag: string;
-}
-
-/** One 30 fps H.264 + AAC MP4 (8 Mbps cap) and one poster frame per video. */
-export class MediaConvertTranscoder implements VideoTranscoder {
-  constructor(
-    private readonly client: MediaConvertClient,
-    private readonly cfg: MediaConvertConfig,
-  ) {}
-
-  async submit(req: { itemId: string; inputKey: string; outputPrefix: string }): Promise<{ jobId: string }> {
-    const destination = `s3://${this.cfg.mediaBucket}/${req.outputPrefix}`;
-    const res = await this.client.send(
-      new CreateJobCommand({
-        Role: this.cfg.roleArn,
-        ClientRequestToken: `item-${req.itemId}`,
-        UserMetadata: { app: this.cfg.appTag, itemId: req.itemId },
-        Settings: {
-          TimecodeConfig: { Source: 'ZEROBASED' },
-          Inputs: [
-            {
-              FileInput: `s3://${this.cfg.stagingBucket}/${req.inputKey}`,
-              TimecodeSource: 'ZEROBASED',
-              VideoSelector: { Rotate: 'AUTO' },
-              AudioSelectors: { 'Audio Selector 1': { DefaultSelection: 'DEFAULT' } },
-            },
-          ],
-          OutputGroups: [
-            {
-              Name: 'Video',
-              OutputGroupSettings: { Type: 'FILE_GROUP_SETTINGS', FileGroupSettings: { Destination: destination } },
-              Outputs: [
-                {
-                  NameModifier: '-1080p',
-                  ContainerSettings: { Container: 'MP4', Mp4Settings: { MoovPlacement: 'PROGRESSIVE_DOWNLOAD' } },
-                  VideoDescription: {
-                    CodecSettings: {
-                      Codec: 'H_264',
-                      H264Settings: {
-                        RateControlMode: 'QVBR',
-                        QvbrSettings: { QvbrQualityLevel: 7 },
-                        MaxBitrate: 8_000_000,
-                        CodecProfile: 'HIGH',
-                        SceneChangeDetect: 'TRANSITION_DETECTION',
-                        FramerateControl: 'SPECIFIED',
-                        FramerateNumerator: 30,
-                        FramerateDenominator: 1,
-                        FramerateConversionAlgorithm: 'DUPLICATE_DROP',
-                      },
-                    },
-                  },
-                  AudioDescriptions: [
-                    {
-                      AudioSourceName: 'Audio Selector 1',
-                      CodecSettings: {
-                        Codec: 'AAC',
-                        AacSettings: { Bitrate: 128_000, CodingMode: 'CODING_MODE_2_0', SampleRate: 48_000 },
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-            {
-              Name: 'Poster',
-              OutputGroupSettings: { Type: 'FILE_GROUP_SETTINGS', FileGroupSettings: { Destination: destination } },
-              Outputs: [
-                {
-                  NameModifier: '-poster',
-                  ContainerSettings: { Container: 'RAW' },
-                  VideoDescription: {
-                    CodecSettings: {
-                      Codec: 'FRAME_CAPTURE',
-                      FrameCaptureSettings: { FramerateNumerator: 1, FramerateDenominator: 1, MaxCaptures: 1, Quality: 80 },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      }),
-    );
-    return { jobId: res.Job!.Id! };
-  }
-
-  async getJob(jobId: string): Promise<{ status: TranscodeStatus; outputs?: VideoOutputs; error?: string }> {
-    const { Job: job } = await this.client.send(new GetJobCommand({ Id: jobId }));
-    const status = (job?.Status ?? 'SUBMITTED') as TranscodeStatus;
-    if (status !== 'COMPLETE') return { status, error: job?.ErrorMessage };
-    const destination = job?.Settings?.OutputGroups?.[0]?.OutputGroupSettings?.FileGroupSettings?.Destination ?? '';
-    const prefix = destination.replace(/^s3:\/\/[^/]+\//, '');
-    const input = job?.Settings?.Inputs?.[0]?.FileInput ?? '';
-    const base = input.split('/').pop()!.replace(/\.[^.]+$/, '');
-    const durationMs = job?.OutputGroupDetails?.[0]?.OutputDetails?.[0]?.DurationInMs ?? 0;
-    return {
-      status,
-      outputs: { videoKey: `${prefix}${base}-1080p.mp4`, posterKey: `${prefix}${base}-poster.0000000.jpg`, durationMs },
-    };
   }
 }

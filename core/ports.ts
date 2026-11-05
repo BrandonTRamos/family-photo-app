@@ -63,9 +63,11 @@ export interface AiTagger {
 export type TranscodeStatus = 'SUBMITTED' | 'PROGRESSING' | 'COMPLETE' | 'ERROR' | 'CANCELED';
 
 export interface VideoTranscoder {
-  /** Idempotent per item id. */
-  submit(req: { itemId: string; inputKey: string; outputPrefix: string }): Promise<{ jobId: string }>;
+  /** Idempotent per item id. Writes the video and poster into outputFolder in the media store. */
+  submit(req: { itemId: string; inputKey: string; outputFolder: string }): Promise<{ jobId: string }>;
   getJob(jobId: string): Promise<{ status: TranscodeStatus; outputs?: VideoOutputs; error?: string }>;
+  /** Reads the transcoder's own job-state notification off the processing queue; undefined if it isn't one. */
+  parseEvent(event: unknown): VideoEvent | undefined;
 }
 
 export interface VideoOutputs {
@@ -99,9 +101,9 @@ export interface IdGenerator {
   next(): string;
 }
 
-export type ProcessingMessage =
-  | { kind: 'ingest'; itemId: string }
-  | { kind: 'video'; itemId: string; jobId: string; status: TranscodeStatus; outputs?: VideoOutputs; error?: string };
+export type VideoEvent = { kind: 'video'; itemId: string; jobId: string; status: TranscodeStatus; outputs?: VideoOutputs; error?: string };
+
+export type ProcessingMessage = { kind: 'ingest'; itemId: string } | VideoEvent;
 
 export interface TaggingMessage {
   kind: 'tag';
