@@ -411,22 +411,26 @@ select {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0 0 0 12px;
-  border-radius: 22px;
+  gap: 3px;
+  min-height: 34px;
+  padding: 0 0 0 10px;
+  border-radius: 17px;
   background: var(--print);
   border: 1px solid var(--rule);
-  font-size: 17px;
+  font-size: 15px;
+}
+.chip svg {
+  width: 14px;
+  height: 14px;
 }
 .chip .remove {
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -436,12 +440,12 @@ select {
   cursor: pointer;
 }
 .chip-button {
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 22px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
   border: 1px solid var(--rule);
   background: var(--print);
-  font-size: 17px;
+  font-size: 15px;
   cursor: pointer;
 }
 .chip-button.add {
@@ -609,4 +613,44 @@ select {
 
 .hint svg {
   flex: none;
+}
+
+/* Photo viewer: tap the photo to see it full screen */
+.open-full {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  cursor: zoom-out;
+}
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.lightbox .close {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
 }

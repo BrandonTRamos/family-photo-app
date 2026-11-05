@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto } from '../../core/api-types';
 import { ErrorNotice, Loading, Sheet, useApi, useLoad } from '../components';
 import { fullDate } from '../format';
@@ -16,6 +16,7 @@ export function Viewer({ id }: { id: string }) {
   const [albumSheet, setAlbumSheet] = useState(false);
   const [videoRetried, setVideoRetried] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
 
   async function act(run: () => Promise<ItemDetailDto>) {
     setActionError(undefined);
@@ -100,7 +101,9 @@ export function Viewer({ id }: { id: string }) {
               }}
             />
           ) : (
-            <img src={item.displayUrl} alt={item.tags.length ? `Photo: ${item.tags.map((t) => t.label).join(', ')}` : 'Photo'} />
+            <button type="button" className="open-full" aria-label="Show full screen" onClick={() => setFullScreen(true)}>
+              <img src={item.displayUrl} alt={item.tags.length ? `Photo: ${item.tags.map((t) => t.label).join(', ')}` : 'Photo'} />
+            </button>
           )}
         </figure>
       )}
@@ -231,6 +234,8 @@ export function Viewer({ id }: { id: string }) {
         </Sheet>
       )}
 
+      {fullScreen && item.displayUrl && <FullScreen src={item.displayUrl} onClose={() => setFullScreen(false)} />}
+
       {albumSheet && (
         <AddToAlbum
           itemId={id}
@@ -243,6 +248,35 @@ export function Viewer({ id }: { id: string }) {
         />
       )}
     </main>
+  );
+}
+
+/** The photo on black, filling the screen. Tap anywhere, the ×, Escape or the phone's Back to close. */
+function FullScreen({ src, onClose }: { src: string; onClose: () => void }) {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    // Back closes it instead of leaving the photo.
+    history.pushState({ fullScreen: true }, '');
+    const onBack = () => close.current();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && history.back();
+    window.addEventListener('popstate', onBack);
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('popstate', onBack);
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  return (
+    <div className="lightbox" role="dialog" aria-modal="true" aria-label="Photo, full screen" onClick={() => history.back()}>
+      <img src={src} alt="" />
+      <button type="button" className="close" aria-label="Close full screen" onClick={(e) => (e.stopPropagation(), history.back())}>
+        <CloseIcon />
+      </button>
+    </div>
   );
 }
 
