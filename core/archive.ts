@@ -148,15 +148,11 @@ export class Archive {
 
   async timeline(query: Record<string, string | undefined>): Promise<TimelineDto> {
     const limit = parseLimit(query.limit, 60);
-    let before: string | undefined;
-    if (query.year !== undefined) {
-      const year = Number(query.year);
-      if (!Number.isInteger(year) || year < 1800 || year > 9999) {
-        throw new DomainError(400, 'invalid_request', 'Year must be a four-digit year.');
-      }
-      before = String(year + 1);
+    const year = query.year === undefined ? undefined : Number(query.year);
+    if (year !== undefined && (!Number.isInteger(year) || year < 1800 || year > 9999)) {
+      throw new DomainError(400, 'invalid_request', 'Year must be a four-digit year.');
     }
-    const page = await this.d.repo.timeline({ limit, cursor: query.cursor, before });
+    const page = await this.d.repo.timeline({ limit, cursor: query.cursor, year });
     const months: TimelineMonthDto[] = [];
     for (const item of page.items) {
       const date = item.capture!.date;
@@ -366,9 +362,14 @@ function sortForDisplay(list: Item[]): Item[] {
 }
 
 function offsetPage<T>(all: T[], cursor: string | undefined, limit: number): { page: T[]; cursor?: string } {
-  const start = cursor ? Number(Buffer.from(cursor, 'base64url').toString('utf8')) || 0 : 0;
+  let start = 0;
+  try {
+    start = cursor ? Number(atob(cursor)) || 0 : 0;
+  } catch {
+    // an unreadable cursor starts from the top
+  }
   const end = start + limit;
-  return { page: all.slice(start, end), cursor: end < all.length ? Buffer.from(String(end)).toString('base64url') : undefined };
+  return { page: all.slice(start, end), cursor: end < all.length ? btoa(String(end)) : undefined };
 }
 
 function parseLimit(raw: string | undefined, fallback: number): number {

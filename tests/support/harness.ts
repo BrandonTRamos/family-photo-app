@@ -5,10 +5,11 @@ import { CreateTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import type { APIGatewayProxyEventV2, SQSEvent } from 'aws-lambda';
 import { DynamoRepository, tableSchema } from '../../core/adapters/dynamo-repository.js';
+import { MemoryRepository } from '../../core/adapters/memory-repository.js';
 import { FileMetadataReader } from '../../core/media/metadata.js';
 import { SharpImageProcessor } from '../../core/media/sharp-images.js';
 import { makeHttpHandler, makeProcessingHandler, makeTaggingHandler } from '../../core/handlers.js';
-import { defaultConfig, type Config, type Deps } from '../../core/ports.js';
+import { defaultConfig, type Config, type Deps, type Repository } from '../../core/ports.js';
 import type { UploadFileRequest, UploadResponse } from '../../core/api-types.js';
 import { FakeTagger, FakeTranscoder, MemoryBlobStore, MemoryQueue } from './fakes.js';
 
@@ -30,41 +31,7 @@ export interface Response<T = any> {
 const MAX_RECEIVES = 5;
 
 export async function createHarness(config: Partial<Config> = {}) {
-  const server = dynalite({ createTableMs: 0, deleteTableMs: 0, updateTableMs: 0 });
-  await new Promise<void>((resolve) => server.listen(0, resolve));
-  const port = (server.address() as AddressInfo).port;
-  const client = new DynamoDBClient({
-    endpoint: `http://127.0.0.1:${port}`,
-    region: 'local',
-    credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
-  });
-  const table = 'family-archive-test';
-  await client.send(
-    new CreateTableCommand({
-      TableName: table,
-      BillingMode: 'PAY_PER_REQUEST',
-      AttributeDefinitions: [
-        { AttributeName: tableSchema.partitionKey, AttributeType: 'S' },
-        { AttributeName: tableSchema.sortKey, AttributeType: 'S' },
-        { AttributeName: tableSchema.gsi1.partitionKey, AttributeType: 'S' },
-        { AttributeName: tableSchema.gsi1.sortKey, AttributeType: 'S' },
-      ],
-      KeySchema: [
-        { AttributeName: tableSchema.partitionKey, KeyType: 'HASH' },
-        { AttributeName: tableSchema.sortKey, KeyType: 'RANGE' },
-      ],
-      GlobalSecondaryIndexes: [
-        {
-          IndexName: tableSchema.gsi1.name,
-          KeySchema: [
-            { AttributeName: tableSchema.gsi1.partitionKey, KeyType: 'HASH' },
-            { AttributeName: tableSchema.gsi1.sortKey, KeyType: 'RANGE' },
-          ],
-          Projection: { ProjectionType: 'ALL' },
-        },
-      ],
-    }),
-  );
+  const store = process.env.ARCHIVE_REPO === 'memory' ? memoryStore() : await dynamoStore();
 
   const fullConfig: Config = { ...defaultConfig, multipartThreshold: 64 * 1024, ...config };
   const staging = new MemoryBlobStore('staging', fullConfig.multipartThreshold, 32 * 1024);
@@ -77,7 +44,7 @@ export async function createHarness(config: Partial<Config> = {}) {
   let idCounter = 0;
 
   const deps: Deps = {
-    repo: new DynamoRepository(DynamoDBDocumentClient.from(client, { marshallOptions: { removeUndefinedValues: true } }), table),
+    repo: store.repo,
     staging,
     media,
     processingQueue,
@@ -190,6 +157,53 @@ export async function createHarness(config: Partial<Config> = {}) {
     setNow(iso: string) {
       now = new Date(iso);
     },
+    close: store.close,
+  };
+}
+
+/** The Repository the suite runs against: DynamoDB (dynalite) by default, or memory with ARCHIVE_REPO=memory. */
+function memoryStore(): { repo: Repository; close: () => Promise<void> } {
+  return { repo: new MemoryRepository(), close: async () => {} };
+}
+
+async function dynamoStore(): Promise<{ repo: Repository; close: () => Promise<void> }> {
+  const server = dynalite({ createTableMs: 0, deleteTableMs: 0, updateTableMs: 0 });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const port = (server.address() as AddressInfo).port;
+  const client = new DynamoDBClient({
+    endpoint: `http://127.0.0.1:${port}`,
+    region: 'local',
+    credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
+  });
+  const table = 'family-archive-test';
+  await client.send(
+    new CreateTableCommand({
+      TableName: table,
+      BillingMode: 'PAY_PER_REQUEST',
+      AttributeDefinitions: [
+        { AttributeName: tableSchema.partitionKey, AttributeType: 'S' },
+        { AttributeName: tableSchema.sortKey, AttributeType: 'S' },
+        { AttributeName: tableSchema.gsi1.partitionKey, AttributeType: 'S' },
+        { AttributeName: tableSchema.gsi1.sortKey, AttributeType: 'S' },
+      ],
+      KeySchema: [
+        { AttributeName: tableSchema.partitionKey, KeyType: 'HASH' },
+        { AttributeName: tableSchema.sortKey, KeyType: 'RANGE' },
+      ],
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: tableSchema.gsi1.name,
+          KeySchema: [
+            { AttributeName: tableSchema.gsi1.partitionKey, KeyType: 'HASH' },
+            { AttributeName: tableSchema.gsi1.sortKey, KeyType: 'RANGE' },
+          ],
+          Projection: { ProjectionType: 'ALL' },
+        },
+      ],
+    }),
+  );
+  return {
+    repo: new DynamoRepository(DynamoDBDocumentClient.from(client, { marshallOptions: { removeUndefinedValues: true } }), table),
     async close() {
       client.destroy();
       await new Promise<void>((resolve) => server.close(() => resolve()));

@@ -88,12 +88,13 @@ export class DynamoRepository implements Repository {
     throw new Error(`Item ${id} kept changing; update abandoned`);
   }
 
-  async timeline(opts: { limit: number; cursor?: string; before?: string }): Promise<Page<Item>> {
+  async timeline(opts: { limit: number; cursor?: string; year?: number }): Promise<Page<Item>> {
+    const before = opts.year === undefined ? undefined : String(opts.year + 1); // sort keys start with the date
     const input: QueryCommandInput = {
       TableName: this.table,
       IndexName: 'gsi1',
-      KeyConditionExpression: opts.before ? 'gsi1pk = :p AND gsi1sk < :b' : 'gsi1pk = :p',
-      ExpressionAttributeValues: opts.before ? { ':p': 'TL', ':b': opts.before } : { ':p': 'TL' },
+      KeyConditionExpression: before ? 'gsi1pk = :p AND gsi1sk < :b' : 'gsi1pk = :p',
+      ExpressionAttributeValues: before ? { ':p': 'TL', ':b': before } : { ':p': 'TL' },
       ScanIndexForward: false,
       Limit: opts.limit,
       ExclusiveStartKey: decodeCursor(opts.cursor),
@@ -190,13 +191,6 @@ export class DynamoRepository implements Repository {
 
   albumItemIds(albumId: string): Promise<string[]> {
     return this.queryAllSortKeys(`ALBUM#${albumId}`, 'ITEM#');
-  }
-
-  countAlbum(albumId: string): Promise<number> {
-    return this.count({
-      KeyConditionExpression: 'pk = :p AND begins_with(sk, :s)',
-      ExpressionAttributeValues: { ':p': `ALBUM#${albumId}`, ':s': 'ITEM#' },
-    });
   }
 
   albumIdsForItem(itemId: string): Promise<string[]> {

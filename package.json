@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p amplify/tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && ARCHIVE_REPO=memory vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {

@@ -12,12 +12,13 @@ export interface Repository {
   getItems(ids: string[]): Promise<Item[]>;
   /**
    * Optimistically updates an item. `mutate` returns the new item, or undefined to leave it unchanged.
-   * Retries on concurrent modification. Returns the stored item after the call, or undefined if missing.
+   * On a concurrent change it is run again on the fresh item, so it must be pure (see item.ts); an error
+   * it throws aborts the update and reaches the caller. Returns the stored item, or undefined if missing.
    */
   updateItem(id: string, mutate: (item: Item) => Item | undefined): Promise<Item | undefined>;
 
-  /** Ready, dated items, newest first. `before` is an exclusive upper bound on the sort key. */
-  timeline(opts: { limit: number; cursor?: string; before?: string }): Promise<Page<Item>>;
+  /** Ready, dated items, newest first; with `year`, only those taken in that year or earlier. */
+  timeline(opts: { limit: number; cursor?: string; year?: number }): Promise<Page<Item>>;
   /** Count of ready items whose Capture date starts with the prefix (YYYY-MM or YYYY-MM-DD). */
   countTimeline(datePrefix: string): Promise<number>;
   undated(opts: { limit: number; cursor?: string }): Promise<Page<Item>>;
@@ -32,7 +33,6 @@ export interface Repository {
   addToAlbum(albumId: string, itemId: string, at: string): Promise<void>;
   removeFromAlbum(albumId: string, itemId: string): Promise<void>;
   albumItemIds(albumId: string): Promise<string[]>;
-  countAlbum(albumId: string): Promise<number>;
   albumIdsForItem(itemId: string): Promise<string[]>;
 }
 
