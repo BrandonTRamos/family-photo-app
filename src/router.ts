@@ -7,7 +7,8 @@ export type Route =
   | { name: 'upload' }
   | { name: 'albums' }
   | { name: 'album'; id: string }
-  | { name: 'undated' };
+  | { name: 'undated' }
+  | { name: 'deleted' };
 
 export function parseRoute(hash: string): Route {
   const [path, query = ''] = hash.replace(/^#/, '').split('?');
@@ -24,6 +25,8 @@ export function parseRoute(hash: string): Route {
       return parts[1] ? { name: 'album', id: parts[1] } : { name: 'albums' };
     case 'undated':
       return { name: 'undated' };
+    case 'recently-deleted':
+      return { name: 'deleted' };
     default:
       return { name: 'timeline' };
   }
@@ -45,6 +48,8 @@ export function href(route: Route): string {
       return `#/albums/${encodeURIComponent(route.id)}`;
     case 'undated':
       return '#/undated';
+    case 'deleted':
+      return '#/recently-deleted';
   }
 }
 

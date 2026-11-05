@@ -24,6 +24,10 @@ export interface Repository {
   undated(opts: { limit: number; cursor?: string }): Promise<Page<Item>>;
   countUndated(): Promise<number>;
   itemIdsWithTag(tagKey: string): Promise<string[]>;
+  /** Every Item in Recently deleted, all uploaders. */
+  deletedItems(): Promise<Item[]>;
+  /** Removes the Item for good, with its Tag index entries and Album memberships. Safe to repeat. */
+  deleteItem(id: string): Promise<void>;
 
   createAlbum(album: Album): Promise<void>;
   getAlbum(id: string): Promise<Album | undefined>;

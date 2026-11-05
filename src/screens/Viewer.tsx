@@ -14,6 +14,7 @@ export function Viewer({ id }: { id: string }) {
   const [date, setDate] = useState('');
   const [albumSheet, setAlbumSheet] = useState(false);
   const [videoRetried, setVideoRetried] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function act(run: () => Promise<ItemDetailDto>) {
     setActionError(undefined);
@@ -61,13 +62,26 @@ export function Viewer({ id }: { id: string }) {
           </button>
         </p>
       )}
+      {item.status === 'deleted' && (
+        <div className="notice" role="status">
+          <p style={{ margin: '0 0 12px' }}>
+            In <a href={href({ name: 'deleted' })}>Recently deleted</a>. Only you can see it.
+            {item.purgeOn && ` It will be deleted for good on ${fullDate(item.purgeOn)}.`}
+          </p>
+          {item.canRestore && (
+            <button type="button" className="button" onClick={() => act(() => api.restoreItem(id))}>
+              Restore
+            </button>
+          )}
+        </div>
+      )}
       {item.status === 'failed' && (
         <p className="notice error" role="alert">
           {item.failureReason ?? 'This upload could not be processed.'} Please try uploading it again.
         </p>
       )}
 
-      {item.status === 'ready' && (
+      {(item.status === 'ready' || item.status === 'deleted') && (
         <figure className="viewer-print">
           {item.kind === 'video' ? (
             <video
@@ -189,6 +203,28 @@ export function Viewer({ id }: { id: string }) {
         <button type="button" className="button block" onClick={() => setAlbumSheet(true)}>
           Add to album
         </button>
+      )}
+
+      {item.canDelete && (
+        <button type="button" className="button danger block" onClick={() => setConfirmDelete(true)}>
+          Delete this {item.kind}
+        </button>
+      )}
+
+      {confirmDelete && (
+        <Sheet title={`Delete this ${item.kind}?`} onClose={() => setConfirmDelete(false)}>
+          <p style={{ margin: 0 }}>It moves to Recently deleted. You can restore it there for 30 days.</p>
+          <button
+            type="button"
+            className="button danger block"
+            onClick={async () => {
+              setConfirmDelete(false);
+              await act(() => api.deleteItem(id));
+            }}
+          >
+            Delete
+          </button>
+        </Sheet>
       )}
 
       {albumSheet && (

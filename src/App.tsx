@@ -6,6 +6,7 @@ import { AlbumDetail, Albums } from './screens/Albums';
 import { Search } from './screens/Search';
 import { Timeline } from './screens/Timeline';
 import { Undated } from './screens/Undated';
+import { RecentlyDeleted } from './screens/RecentlyDeleted';
 import { Upload } from './screens/Upload';
 import { Viewer } from './screens/Viewer';
 
@@ -80,6 +81,7 @@ function Shell({ onSignOut, demo }: { onSignOut?: () => void; demo?: boolean }) 
       {route.name === 'albums' && <Albums />}
       {route.name === 'album' && <AlbumDetail id={route.id} />}
       {route.name === 'undated' && <Undated />}
+      {route.name === 'deleted' && <RecentlyDeleted />}
     </div>
   );
 }

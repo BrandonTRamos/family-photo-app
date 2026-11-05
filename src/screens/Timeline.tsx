@@ -135,6 +135,10 @@ export function Timeline() {
           </button>
         </div>
       </form>
+
+      <p style={{ margin: 0 }}>
+        <a href={href({ name: 'deleted' })}>Recently deleted</a>
+      </p>
     </main>
   );
 }

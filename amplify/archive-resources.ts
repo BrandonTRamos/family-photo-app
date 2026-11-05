@@ -157,11 +157,13 @@ export class ArchiveResources extends Construct {
     const api = fn('Api', 'api', { memorySize: 512, timeout: Duration.seconds(20) });
     const processor = fn('Processor', 'processor', { memorySize: 2048, timeout: PROCESSOR_TIMEOUT, sharp: true });
     const tagger = fn('Tagger', 'tagger', { memorySize: 1024, timeout: TAGGER_TIMEOUT, sharp: true });
+    const janitor = fn('Janitor', 'janitor', { memorySize: 256, timeout: Duration.minutes(5) });
 
     table.grantReadWriteData(api);
     staging.grantReadWrite(api);
     api.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:AbortMultipartUpload'], resources: [staging.arnForObjects('*')] }));
     media.grantRead(api);
+    media.grantDelete(api); // "Delete now" in Recently deleted
     processingQueue.grantSendMessages(api);
 
     table.grantReadWriteData(processor);
@@ -189,6 +191,14 @@ export class ArchiveResources extends Construct {
       }),
     );
     tagger.addEventSource(new SqsEventSource(taggingQueue, { batchSize: 1, maxConcurrency: 2, reportBatchItemFailures: true }));
+
+    // Daily: remove Items that have been in Recently deleted for 30 days.
+    table.grantReadWriteData(janitor);
+    media.grantDelete(janitor);
+    new events.Rule(this, 'DailyPurge', {
+      schedule: events.Schedule.cron({ hour: '7', minute: '23' }),
+      targets: [new targets.LambdaFunction(janitor)],
+    });
 
     // ---- HTTP API ----
     const httpApi = new HttpApi(this, 'HttpApi', {

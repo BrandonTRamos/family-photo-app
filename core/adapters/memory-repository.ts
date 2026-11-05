@@ -60,6 +60,15 @@ export class MemoryRepository implements Repository {
     return [...this.items.values()].filter((i) => i.tags.some((t) => t.key === tagKey)).map((i) => i.id).sort();
   }
 
+  async deletedItems(): Promise<Item[]> {
+    return this.placed('deleted').map(([, item]) => copy(item));
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    this.items.delete(id);
+    for (const members of this.memberships.values()) members.delete(id);
+  }
+
   async createAlbum(album: Album): Promise<void> {
     if (this.albums.has(album.id)) throw new Error(`Album ${album.id} already exists`);
     this.albums.set(album.id, copy(album));

@@ -1,7 +1,7 @@
 // The HTTP API contract, shared by the server and the web client. No runtime dependencies.
 
 export type ItemKindDto = 'photo' | 'video';
-export type ItemStatusDto = 'uploading' | 'processing' | 'ready' | 'failed';
+export type ItemStatusDto = 'uploading' | 'processing' | 'ready' | 'failed' | 'deleted';
 
 export interface CaptureDateDto {
   date: string;
@@ -41,6 +41,16 @@ export interface ItemDetailDto {
   tags: TagDto[];
   albums: { id: string; name: string }[];
   failureReason?: string;
+  /** Only the uploader can delete, and only once processed. */
+  canDelete: boolean;
+  /** In Recently deleted and viewed by its uploader. */
+  canRestore: boolean;
+  /** When in Recently deleted: the day it is removed for good (YYYY-MM-DD). */
+  purgeOn?: string;
+}
+
+export interface RecentlyDeletedDto {
+  items: (ItemSummaryDto & { purgeOn: string })[];
 }
 
 export interface TimelineDayDto {

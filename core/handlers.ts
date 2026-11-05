@@ -1,5 +1,6 @@
 // Lambda entry points, built from dependencies so tests and AWS wire them the same way. The HTTP API is in http-api.ts.
 import type { SQSBatchResponse, SQSHandler } from 'aws-lambda';
+import { Archive } from './archive.js';
 import { Pipeline } from './pipeline.js';
 import type { Deps, ProcessingMessage } from './ports.js';
 
@@ -25,6 +26,12 @@ export function makeTaggingHandler(deps: Deps): SQSHandler {
     if (parsed?.kind !== 'tag' || typeof parsed.itemId !== 'string') return Promise.resolve();
     return pipeline.tag(parsed.itemId);
   });
+}
+
+/** Daily: removes Items that have been in Recently deleted for 30 days. */
+export function makePurgeHandler(deps: Deps): () => Promise<{ purged: number }> {
+  const archive = new Archive(deps);
+  return async () => ({ purged: await archive.purgeExpired() });
 }
 
 function batch(run: (body: string) => Promise<void>): SQSHandler {

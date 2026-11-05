@@ -7,7 +7,7 @@ import { DomainError, type CaptureDate, type Item, type ItemKind, type ItemMedia
 export const MAX_TAG_LENGTH = 40;
 export const MAX_AI_TAGS = 12;
 
-// ---- lifecycle: uploading → processing → ready | failed ----
+// ---- lifecycle: uploading → processing → ready | failed; ready ⇄ deleted (Recently deleted) → purged ----
 
 export function newUpload(fields: {
   id: string;
@@ -52,9 +52,51 @@ export function isReady(it: Item): boolean {
   return it.status === 'ready';
 }
 
-/** Visible to family members at all (a failed or processing Item can still be opened). */
-export function isVisible(it: Item): boolean {
-  return it.status !== 'uploading';
+/** Whether this family member can open it: a failed or processing Item can be; a deleted one only by its uploader. */
+export function isVisibleTo(it: Item, viewer: Person): boolean {
+  if (it.status === 'uploading') return false;
+  return it.status !== 'deleted' || isUploader(it, viewer);
+}
+
+export function isUploader(it: Item, person: Person): boolean {
+  return it.addedBy.id === person.id;
+}
+
+// ---- Recently deleted ----
+
+export const RECENTLY_DELETED_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Only the uploader can delete, and only a ready Item. */
+export function canDelete(it: Item, by: Person): boolean {
+  return isReady(it) && isUploader(it, by);
+}
+
+export function moveToRecentlyDeleted(it: Item, by: Person, at: string): Item {
+  requireReady(it);
+  if (!isUploader(it, by)) throw new DomainError(403, 'not_yours', 'Only the person who added this can delete it.');
+  return { ...it, status: 'deleted', deletedAt: at };
+}
+
+/** Back exactly as it was: same Tags, same Albums. */
+export function restore(it: Item, by: Person): Item {
+  if (it.status !== 'deleted' || !isUploader(it, by)) throw new DomainError(404, 'not_found', 'That item was not found.');
+  return { ...it, status: 'ready', deletedAt: undefined };
+}
+
+/** The day (UTC) a deleted Item is removed for good. */
+export function purgeOn(it: Item): string | undefined {
+  return it.deletedAt && new Date(Date.parse(it.deletedAt) + RECENTLY_DELETED_DAYS * DAY_MS).toISOString().slice(0, 10);
+}
+
+export function isPurgeDue(it: Item, now: Date): boolean {
+  return it.status === 'deleted' && !!it.deletedAt && now.getTime() >= Date.parse(it.deletedAt) + RECENTLY_DELETED_DAYS * DAY_MS;
+}
+
+/** Every stored file of the Item, for removing it for good. */
+export function mediaKeys(it: Item): string[] {
+  const m = it.media;
+  return m ? [m.thumbKey, m.displayKey, m.videoKey, m.posterKey].filter((k): k is string => !!k) : [];
 }
 
 export function canSetCaptureDate(it: Item): boolean {
@@ -69,10 +111,11 @@ export function setCaptureDate(it: Item, date: string): Item {
 
 // ---- where an Item shows up ----
 
-export type Placement = { list: 'timeline' | 'undated'; sortKey: string };
+export type Placement = { list: 'timeline' | 'undated' | 'deleted'; sortKey: string };
 
-/** Timeline for dated ready Items, Undated for undated ones, nowhere otherwise. */
+/** Timeline for dated ready Items, Undated for undated ones, Recently deleted for deleted ones, nowhere otherwise. */
 export function placement(it: Item): Placement | undefined {
+  if (it.status === 'deleted') return { list: 'deleted', sortKey: `${it.deletedAt}#${it.id}` };
   if (!isReady(it)) return undefined;
   if (it.capture) return { list: 'timeline', sortKey: timelineSortKey(it)! };
   return { list: 'undated', sortKey: `${it.createdAt}#${it.id}` };

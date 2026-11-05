@@ -12,6 +12,10 @@ _Avoid_: Library, album (for the whole collection), gallery
 A single photo or video in the Archive. It is ready once processed; only ready Items appear on the Timeline, in Undated, in Albums or in search.
 _Avoid_: Asset, media, file, post
 
+**Recently deleted**:
+Where an Item goes when its uploader deletes it. Only the uploader sees it there and can restore it, with its Tags and Albums. After 30 days it is deleted for good, files included. Only the uploader can delete an Item.
+_Avoid_: Trash, bin, archive (for deleted items)
+
 **Album**:
 A named group of items from the Archive, made by a family member (for example, "Lake trip 2019"). An item can be in any number of Albums and always remains in the Archive; deleting an Album never deletes its items.
 _Avoid_: Folder, collection, story

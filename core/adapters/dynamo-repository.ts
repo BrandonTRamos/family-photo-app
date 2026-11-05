@@ -14,7 +14,7 @@ import type { Page, Repository } from '../ports.js';
 
 /**
  * Single-table layout:
- *   ITEM#id   / ITEM        the item (gsi1: TL by Capture date, or UNDATED by created time)
+ *   ITEM#id   / ITEM        the item (gsi1: TL by Capture date, UNDATED by created time, or DELETED by deleted time)
  *   ITEM#id   / ALBUM#aid   reverse Album membership
  *   TAG#key   / ITEM#id     tag index (verified against the item on read)
  *   ALBUM#aid / ALBUM       the Album (gsi1: ALBUMS)
@@ -134,6 +134,32 @@ export class DynamoRepository implements Repository {
     });
   }
 
+  async deletedItems(): Promise<Item[]> {
+    const out: Item[] = [];
+    let cursor: Record<string, unknown> | undefined;
+    do {
+      const res = await this.doc.send(
+        new QueryCommand({
+          TableName: this.table,
+          IndexName: 'gsi1',
+          KeyConditionExpression: 'gsi1pk = :p',
+          ExpressionAttributeValues: { ':p': 'DELETED' },
+          ExclusiveStartKey: cursor,
+        }),
+      );
+      out.push(...(res.Items ?? []).map((r) => r.data as Item));
+      cursor = res.LastEvaluatedKey;
+    } while (cursor);
+    return out;
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    const item = await this.getItem(id);
+    for (const tag of item?.tags ?? []) await this.deleteRow(`TAG#${tag.key}`, `ITEM#${id}`);
+    for (const albumId of await this.albumIdsForItem(id)) await this.removeFromAlbum(albumId, id);
+    await this.deleteRow(`ITEM#${id}`, 'ITEM');
+  }
+
   itemIdsWithTag(tagKey: string): Promise<string[]> {
     return this.queryAllSortKeys(`TAG#${tagKey}`, 'ITEM#');
   }
@@ -201,7 +227,7 @@ export class DynamoRepository implements Repository {
     const row: Record<string, unknown> = { pk: `ITEM#${item.id}`, sk: 'ITEM', version: item.version, data: item };
     const where = placement(item);
     if (where) {
-      row.gsi1pk = where.list === 'timeline' ? 'TL' : 'UNDATED';
+      row.gsi1pk = { timeline: 'TL', undated: 'UNDATED', deleted: 'DELETED' }[where.list];
       row.gsi1sk = where.sortKey;
     }
     return stripUndefined(row);

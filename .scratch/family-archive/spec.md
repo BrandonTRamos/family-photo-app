@@ -179,7 +179,7 @@ The interface follows the chosen **Warm keepsake** direction: phone-first, cream
 - Captions, semantic search, comments, stories and voice recordings.
 - Client-side compression and Rekognition.
 - HDR, 4K, 60 fps and Live Photo handling beyond the 1080p/30 baseline.
-- Editing or deleting items, and their recovery behavior.
+- Editing items (deleting is covered below, added after launch).
 - The Quiet gallery and Editorial UI directions.
 - Deleting or changing any existing family media during migration or setup.
 
@@ -194,3 +194,14 @@ The interface follows the chosen **Warm keepsake** direction: phone-first, cream
   - the app's final name ("Family Archive" is a placeholder)
 - **Cost:** about $0.28, $1.34 and $2.65 a month for low, medium and high use with free allowances counted. These November 2026 figures are illustrative; recheck prices before deciding.
 - **Fidelity tradeoff:** keeping only the compressed versions permanently loses original quality, RAW, HDR, depth and Live Photo data. That's accepted for the baseline.
+
+## Addendum: deleting items (2026-11-05)
+
+Decided with the user after launch:
+
+- Only the uploader can delete an Item, and only once it is ready (`403 not_yours`, `409 not_ready`).
+- Deleting moves it to Recently deleted. It is hidden from the Timeline, Undated, search and Albums; only the uploader can open it, with a Restore button.
+- Restoring brings it back with the same Tags and Albums.
+- 30 days after deletion a daily job deletes it for good: its files, Tag index entries and Album memberships. "Delete now" in Recently deleted does the same at once, after a confirmation.
+- Deleting is done from the item's own page only. Selecting several at once is deferred.
+

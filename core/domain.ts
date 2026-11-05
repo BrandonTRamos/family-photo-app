@@ -2,8 +2,8 @@
 
 export type ItemKind = 'photo' | 'video';
 
-/** uploading: grant issued, bytes not confirmed. processing: in the pipeline. */
-export type ItemStatus = 'uploading' | 'processing' | 'ready' | 'failed';
+/** uploading: grant issued, bytes not confirmed. processing: in the pipeline. deleted: in Recently deleted. */
+export type ItemStatus = 'uploading' | 'processing' | 'ready' | 'failed' | 'deleted';
 
 export interface Person {
   id: string;
@@ -59,6 +59,8 @@ export interface Item {
   aiTagging?: { model: string; at: string };
   videoJob?: { jobId: string; submittedAt: string };
   failureReason?: string;
+  /** When the uploader moved it to Recently deleted. */
+  deletedAt?: string;
 }
 
 export interface Album {

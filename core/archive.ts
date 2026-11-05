@@ -5,12 +5,19 @@ import {
   canSetCaptureDate,
   compareForDisplay,
   hasTags,
+  canDelete,
+  isPurgeDue,
   isReady,
-  isVisible,
+  isUploader,
+  isVisibleTo,
   markUploaded,
+  mediaKeys,
+  moveToRecentlyDeleted,
   newUpload,
   parseTag,
+  purgeOn,
   removeTag,
+  restore,
   setCaptureDate,
 } from './item.js';
 import {
@@ -20,6 +27,7 @@ import {
   type AlbumDto,
   type ItemDetailDto,
   type ItemSummaryDto,
+  type RecentlyDeletedDto,
   type SearchDto,
   type TimelineDto,
   type TimelineMonthDto,
@@ -182,10 +190,10 @@ export class Archive {
     };
   }
 
-  async item(id: string): Promise<ItemDetailDto> {
+  async item(user: Person, id: string): Promise<ItemDetailDto> {
     const item = await this.d.repo.getItem(id);
-    if (!item || !isVisible(item)) throw new DomainError(404, 'not_found', 'That item was not found.');
-    return this.detail(item);
+    if (!item || !isVisibleTo(item, user)) throw new DomainError(404, 'not_found', 'That item was not found.');
+    return this.detail(item, user);
   }
 
   async search(query: Record<string, string | undefined>): Promise<SearchDto> {
@@ -222,21 +230,67 @@ export class Archive {
     const tag = parseTag((body as { label?: unknown } | undefined)?.label);
     const item = await this.d.repo.updateItem(id, (it) => addFamilyTag(it, tag, user));
     if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
-    return this.detail(item);
+    return this.detail(item, user);
   }
 
-  async removeTag(id: string, rawKey: string): Promise<ItemDetailDto> {
+  async removeTag(user: Person, id: string, rawKey: string): Promise<ItemDetailDto> {
     const { key } = parseTag(rawKey);
     const item = await this.d.repo.updateItem(id, (it) => removeTag(it, key));
     if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
-    return this.detail(item);
+    return this.detail(item, user);
   }
 
-  async setCaptureDate(id: string, body: unknown): Promise<ItemDetailDto> {
+  async setCaptureDate(user: Person, id: string, body: unknown): Promise<ItemDetailDto> {
     const date = parseExactDate((body as { date?: unknown } | undefined)?.date, this.today());
     const item = await this.d.repo.updateItem(id, (it) => setCaptureDate(it, date));
     if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
-    return this.detail(item);
+    return this.detail(item, user);
+  }
+
+  // ---- deleting: Recently deleted for 30 days, then gone for good ----
+
+  async deleteItem(user: Person, id: string): Promise<ItemDetailDto> {
+    const at = this.d.clock.now().toISOString();
+    const item = await this.d.repo.updateItem(id, (it) => moveToRecentlyDeleted(it, user, at));
+    if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
+    return this.detail(item, user);
+  }
+
+  async restoreItem(user: Person, id: string): Promise<ItemDetailDto> {
+    const item = await this.d.repo.updateItem(id, (it) => restore(it, user));
+    if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
+    return this.detail(item, user);
+  }
+
+  /** The caller's own deleted Items, most recently deleted first. */
+  async recentlyDeleted(user: Person): Promise<RecentlyDeletedDto> {
+    const mine = (await this.d.repo.deletedItems())
+      .filter((i) => isUploader(i, user))
+      .sort((a, b) => b.deletedAt!.localeCompare(a.deletedAt!));
+    return { items: await Promise.all(mine.map(async (i) => ({ ...(await this.summary(i)), purgeOn: purgeOn(i)! }))) };
+  }
+
+  /** "Delete now" from Recently deleted. */
+  async deleteForGood(user: Person, id: string): Promise<{ deleted: true }> {
+    const item = await this.d.repo.getItem(id);
+    if (!item || !isVisibleTo(item, user)) throw new DomainError(404, 'not_found', 'That item was not found.');
+    if (item.status !== 'deleted') throw new DomainError(409, 'not_deleted', 'Delete it first; it then waits in Recently deleted.');
+    await this.purge(item);
+    return { deleted: true };
+  }
+
+  /** Runs daily: removes Items that have been in Recently deleted for 30 days. */
+  async purgeExpired(): Promise<number> {
+    const now = this.d.clock.now();
+    const due = (await this.d.repo.deletedItems()).filter((i) => isPurgeDue(i, now));
+    for (const item of due) await this.purge(item);
+    return due.length;
+  }
+
+  /** Files first, then the record, so a failure part-way is finished by the next run. */
+  private async purge(item: Item): Promise<void> {
+    for (const key of mediaKeys(item)) await this.d.media.delete(key);
+    await this.d.repo.deleteItem(item.id);
   }
 
   // ---- albums ----
@@ -328,10 +382,10 @@ export class Archive {
     };
   }
 
-  private async detail(item: Item): Promise<ItemDetailDto> {
+  private async detail(item: Item, viewer: Person): Promise<ItemDetailDto> {
     const albumIds = await this.d.repo.albumIdsForItem(item.id);
     const albums = (await Promise.all(albumIds.map((a) => this.d.repo.getAlbum(a)))).filter((a): a is Album => !!a);
-    const ready = isReady(item);
+    const ready = isReady(item) || item.status === 'deleted';
     const m = ready ? item.media : undefined;
     return {
       id: item.id,
@@ -353,6 +407,9 @@ export class Archive {
       tags: item.tags.map((t) => ({ key: t.key, label: t.label, source: t.source, addedBy: t.addedBy?.name })),
       albums: albums.sort((a, b) => a.name.localeCompare(b.name)).map((a) => ({ id: a.id, name: a.name })),
       failureReason: item.status === 'failed' ? item.failureReason : undefined,
+      canDelete: canDelete(item, viewer),
+      canRestore: item.status === 'deleted' && isUploader(item, viewer),
+      purgeOn: purgeOn(item),
     };
   }
 }

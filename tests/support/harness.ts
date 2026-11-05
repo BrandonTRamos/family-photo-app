@@ -8,7 +8,7 @@ import { DynamoRepository, tableSchema } from '../../core/adapters/dynamo-reposi
 import { MemoryRepository } from '../../core/adapters/memory-repository.js';
 import { FileMetadataReader } from '../../core/media/metadata.js';
 import { SharpImageProcessor } from '../../core/media/sharp-images.js';
-import { makeHttpHandler, makeProcessingHandler, makeTaggingHandler } from '../../core/handlers.js';
+import { makeHttpHandler, makeProcessingHandler, makePurgeHandler, makeTaggingHandler } from '../../core/handlers.js';
 import { defaultConfig, type Config, type Deps, type Repository } from '../../core/ports.js';
 import { apiEvent, inProcessFetch } from '../../core/adapters/in-process-fetch.js';
 import { HttpApiClient } from '../../src/api.js';
@@ -64,6 +64,7 @@ export async function createHarness(config: Partial<Config> = {}) {
   const http = makeHttpHandler(deps);
   const processing = makeProcessingHandler(deps);
   const tagging = makeTaggingHandler(deps);
+  const purge = makePurgeHandler(deps);
   const deadLetters: { queue: string; body: string }[] = [];
 
   async function request<T = any>(user: User | undefined, method: string, path: string, body?: unknown): Promise<Response<T>> {
@@ -146,6 +147,7 @@ export async function createHarness(config: Partial<Config> = {}) {
     put: <T = any>(user: User, path: string, body?: unknown) => request<T>(user, 'PUT', path, body ?? {}),
     del: <T = any>(user: User, path: string) => request<T>(user, 'DELETE', path),
     drain,
+    purge,
     upload,
     uploader,
     failStorageSends(n: number) {

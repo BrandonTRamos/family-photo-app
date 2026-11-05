@@ -3,6 +3,7 @@ import type {
   AlbumDto,
   ErrorDto,
   ItemDetailDto,
+  RecentlyDeletedDto,
   SearchDto,
   TimelineDto,
   UndatedDto,
@@ -21,6 +22,10 @@ export interface ApiClient {
   addTag(id: string, label: string): Promise<ItemDetailDto>;
   removeTag(id: string, key: string): Promise<ItemDetailDto>;
   setDate(id: string, date: string): Promise<ItemDetailDto>;
+  deleteItem(id: string): Promise<ItemDetailDto>;
+  restoreItem(id: string): Promise<ItemDetailDto>;
+  recentlyDeleted(): Promise<RecentlyDeletedDto>;
+  deleteForGood(id: string): Promise<void>;
   search(tags: string[], cursor?: string): Promise<SearchDto>;
   albums(): Promise<{ albums: AlbumDto[] }>;
   album(id: string, cursor?: string): Promise<AlbumDetailDto>;
@@ -102,6 +107,18 @@ export class HttpApiClient implements ApiClient {
   }
   setDate(id: string, date: string) {
     return this.call<ItemDetailDto>('PUT', `/items/${encodeURIComponent(id)}/capture-date`, { date });
+  }
+  deleteItem(id: string) {
+    return this.call<ItemDetailDto>('DELETE', `/items/${encodeURIComponent(id)}`);
+  }
+  restoreItem(id: string) {
+    return this.call<ItemDetailDto>('POST', `/items/${encodeURIComponent(id)}/restore`);
+  }
+  recentlyDeleted() {
+    return this.call<RecentlyDeletedDto>('GET', '/recently-deleted');
+  }
+  async deleteForGood(id: string) {
+    await this.call('DELETE', `/recently-deleted/${encodeURIComponent(id)}`);
   }
   search(tags: string[], cursor?: string) {
     const q = new URLSearchParams({ tags: tags.join(',') });
