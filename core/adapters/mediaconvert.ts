@@ -1,6 +1,6 @@
 // Everything MediaConvert-specific: submitting jobs, reading them back, and its EventBridge events.
 import { CreateJobCommand, GetJobCommand, MediaConvertClient } from '@aws-sdk/client-mediaconvert';
-import type { TranscodeStatus, VideoEvent, VideoOutputs, VideoTranscoder } from '../ports.js';
+import type { TranscodeStatus, VideoEvent, VideoOutputs, VideoSize, VideoTranscoder } from '../ports.js';
 
 export interface MediaConvertConfig {
   roleArn: string;
@@ -16,7 +16,7 @@ export class MediaConvertTranscoder implements VideoTranscoder {
     private readonly cfg: MediaConvertConfig,
   ) {}
 
-  async submit(req: { itemId: string; inputKey: string; outputFolder: string }): Promise<{ jobId: string }> {
+  async submit(req: { itemId: string; inputKey: string; outputFolder: string; size?: VideoSize }): Promise<{ jobId: string }> {
     const destination = `s3://${this.cfg.mediaBucket}/${req.outputFolder}`;
     const res = await this.client.send(
       new CreateJobCommand({
@@ -42,6 +42,8 @@ export class MediaConvertTranscoder implements VideoTranscoder {
                   NameModifier: '-1080p',
                   ContainerSettings: { Container: 'MP4', Mp4Settings: { MoovPlacement: 'PROGRESSIVE_DOWNLOAD' } },
                   VideoDescription: {
+                    // Rotation is applied on input, so the size is in on-screen orientation.
+                    ...(req.size ? { Width: req.size.width, Height: req.size.height } : {}),
                     CodecSettings: {
                       Codec: 'H_264',
                       H264Settings: {

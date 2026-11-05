@@ -70,11 +70,19 @@ export interface AiTagger {
 export type TranscodeStatus = 'SUBMITTED' | 'PROGRESSING' | 'COMPLETE' | 'ERROR' | 'CANCELED';
 
 export interface VideoTranscoder {
-  /** Idempotent per item id. Writes the video and poster into outputFolder in the media store. */
-  submit(req: { itemId: string; inputKey: string; outputFolder: string }): Promise<{ jobId: string }>;
+  /**
+   * Idempotent per item id. Writes the video and poster into outputFolder in the media store,
+   * scaled to `size` (on-screen orientation) when given, else at the input's size.
+   */
+  submit(req: { itemId: string; inputKey: string; outputFolder: string; size?: VideoSize }): Promise<{ jobId: string }>;
   getJob(jobId: string): Promise<{ status: TranscodeStatus; outputs?: VideoOutputs; error?: string }>;
   /** Reads the transcoder's own job-state notification off the processing queue; undefined if it isn't one. */
   parseEvent(event: unknown): VideoEvent | undefined;
+}
+
+export interface VideoSize {
+  width: number;
+  height: number;
 }
 
 export interface VideoOutputs {
@@ -97,7 +105,11 @@ export interface ImageProcessor {
 
 export interface MetadataReader {
   photoCapture(bytes: Uint8Array): Promise<CaptureDate | undefined>;
-  videoCapture(read: (start: number, endInclusive: number) => Promise<Uint8Array>, size: number): Promise<CaptureDate | undefined>;
+  /** Capture date and on-screen size (rotation applied) from the MP4 header, where present. */
+  videoInfo(
+    read: (start: number, endInclusive: number) => Promise<Uint8Array>,
+    size: number,
+  ): Promise<{ capture?: CaptureDate; size?: VideoSize }>;
 }
 
 export interface Clock {

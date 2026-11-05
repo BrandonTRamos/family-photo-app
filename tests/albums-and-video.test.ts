@@ -117,6 +117,26 @@ describe('videos', () => {
     expect(h.staging.objects.size).toBe(0);
   });
 
+  it('are kept at most 1080p, whichever way the phone was held', async () => {
+    const sizes: Record<string, unknown> = {};
+    const cases = {
+      '4K landscape': { width: 3840, height: 2160 },
+      '4K portrait (stored sideways)': { width: 3840, height: 2160, rotation: 90 as const },
+      '1080p already': { width: 1920, height: 1080 },
+      'small': { width: 640, height: 360 },
+    };
+    for (const [name, video] of Object.entries(cases)) {
+      await uploadVideo(mp4({ createdUtc: '2026-07-04T18:00:00Z', video }));
+      sizes[name] = [...h.transcoder.jobs.values()].at(-1)!.size;
+    }
+    expect(sizes).toEqual({
+      '4K landscape': { width: 1920, height: 1080 },
+      '4K portrait (stored sideways)': { width: 1080, height: 1920 },
+      '1080p already': undefined,
+      'small': undefined,
+    });
+  });
+
   it('read the creation time from a plain MP4', async () => {
     const { id, jobId } = await uploadVideo(mp4({ createdUtc: '2026-07-04T18:00:00Z' }));
     await h.transcoder.finish(jobId);

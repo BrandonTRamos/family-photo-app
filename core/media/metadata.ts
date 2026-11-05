@@ -1,6 +1,6 @@
 import exifr from 'exifr';
 import type { CaptureDate } from '../domain.js';
-import type { MetadataReader } from '../ports.js';
+import type { MetadataReader, VideoSize } from '../ports.js';
 
 const EXIF_DATE = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/;
 const OFFSET = /^[+-]\d{2}:\d{2}$/;
@@ -35,13 +35,13 @@ export class FileMetadataReader implements MetadataReader {
     };
   }
 
-  async videoCapture(
+  async videoInfo(
     read: (start: number, endInclusive: number) => Promise<Buffer>,
     size: number,
-  ): Promise<CaptureDate | undefined> {
+  ): Promise<{ capture?: CaptureDate; size?: VideoSize }> {
     const moov = await findTopLevelBox(read, size, 'moov');
-    if (!moov) return undefined;
-    return appleCreationDate(moov) ?? mvhdCreationDate(moov);
+    if (!moov) return {};
+    return { capture: appleCreationDate(moov) ?? mvhdCreationDate(moov), size: displaySize(moov) };
   }
 }
 
@@ -99,4 +99,36 @@ function mvhdCreationDate(moov: Buffer): CaptureDate | undefined {
     offset += boxSize;
   }
   return undefined;
+}
+
+/** The first track with a picture: its stored size, swapped when the track is rotated a quarter turn. */
+function displaySize(moov: Buffer): VideoSize | undefined {
+  for (const trak of childBoxes(moov, 'trak')) {
+    const tkhd = childBoxes(trak, 'tkhd')[0];
+    if (!tkhd) continue;
+    const version = tkhd.readUInt8(0);
+    const matrixAt = version === 1 ? 52 : 40;
+    if (tkhd.length < matrixAt + 44) continue;
+    const a = tkhd.readInt32BE(matrixAt);
+    const b = tkhd.readInt32BE(matrixAt + 4);
+    const width = tkhd.readUInt32BE(matrixAt + 36) >>> 16;
+    const height = tkhd.readUInt32BE(matrixAt + 40) >>> 16;
+    if (!width || !height) continue; // audio
+    const quarterTurn = a === 0 && b !== 0;
+    return quarterTurn ? { width: height, height: width } : { width, height };
+  }
+  return undefined;
+}
+
+/** Bodies of the direct child boxes of the given type. */
+function childBoxes(parent: Buffer, type: string): Buffer[] {
+  const out: Buffer[] = [];
+  let offset = 0;
+  while (offset + 8 <= parent.length) {
+    const boxSize = parent.readUInt32BE(offset);
+    if (boxSize < 8 || offset + boxSize > parent.length) break;
+    if (parent.toString('latin1', offset + 4, offset + 8) === type) out.push(parent.subarray(offset + 8, offset + boxSize));
+    offset += boxSize;
+  }
+  return out;
 }

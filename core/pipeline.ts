@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { CaptureDate, Item, ItemMedia } from './domain.js';
 import { mediaLayout } from './media-layout.js';
 import { applyAiTags, captureFor, fail as failItem, needsAiTags, publish as publishItem, recordVideoJob } from './item.js';
-import type { Deps, ProcessingMessage, VideoEvent, VideoOutputs } from './ports.js';
+import type { Deps, ProcessingMessage, VideoEvent, VideoOutputs, VideoSize } from './ports.js';
 
 export class Pipeline {
   constructor(private readonly d: Deps) {}
@@ -54,15 +54,16 @@ export class Pipeline {
     if (item.videoJob) return this.reconcileVideo(item);
     const head = await this.d.staging.head(item.stagingKey);
     if (!head) return this.fail(item, 'The uploaded file is missing.');
-    const fileDate = await this.d.metadata
-      .videoCapture((s, e) => this.d.staging.readRange(item.stagingKey, s, e), head.size)
-      .catch(() => undefined);
+    const info = await this.d.metadata
+      .videoInfo((s, e) => this.d.staging.readRange(item.stagingKey, s, e), head.size)
+      .catch(() => ({}) as { capture?: CaptureDate; size?: VideoSize });
     const { jobId } = await this.d.transcoder.submit({
       itemId: item.id,
       inputKey: item.stagingKey,
       outputFolder: mediaLayout.videoFolder(item.id),
+      size: videoOutputSize(info.size),
     });
-    const capture = captureFor(item, fileDate);
+    const capture = captureFor(item, info.capture);
     const at = this.d.clock.now().toISOString();
     await this.d.repo.updateItem(item.id, (it) => recordVideoJob(it, jobId, at, capture));
   }
@@ -144,6 +145,18 @@ export class Pipeline {
     await this.d.repo.updateItem(itemId, (it) => applyAiTags(it, result.tags, result.model, at));
   }
 }
+
+/** Videos are kept at most 1080p: the short side scaled down to 1080, never up (undefined = keep the input size). */
+export function videoOutputSize(input: VideoSize | undefined): VideoSize | undefined {
+  if (!input) return undefined;
+  const short = Math.min(input.width, input.height);
+  if (short <= MAX_VIDEO_SHORT_SIDE) return undefined;
+  const scale = MAX_VIDEO_SHORT_SIDE / short;
+  const even = (n: number) => Math.max(2, Math.round((n * scale) / 2) * 2); // H.264 needs even sizes
+  return { width: even(input.width), height: even(input.height) };
+}
+
+const MAX_VIDEO_SHORT_SIDE = 1080;
 
 function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');

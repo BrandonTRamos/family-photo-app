@@ -4,7 +4,7 @@ Status: accepted (2026-11-05)
 
 ## Decision
 
-The Archive stores only processed copies: photos as a 2048px JPEG plus a 400px thumbnail, videos as H.264 MP4 at 30 fps (QVBR 7, 8 Mbps cap) plus a poster. The uploaded original is deleted once those copies are verified. Failed uploads keep their original in staging for 30 days, for recovery.
+The Archive stores only processed copies: photos as a 2048px JPEG plus a 400px thumbnail, videos as H.264 MP4 at 30 fps, at most 1080p (short side scaled down to 1080, never up; QVBR 7, 8 Mbps cap) plus a poster. The uploaded original is deleted once those copies are verified. Failed uploads keep their original in staging for 30 days, for recovery.
 
 ## Why
 

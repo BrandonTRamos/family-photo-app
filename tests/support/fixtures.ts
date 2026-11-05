@@ -32,7 +32,15 @@ export async function pngWithoutDate(): Promise<Buffer> {
 }
 
 /** Minimal MP4: ftyp, moov/mvhd with a creation time, and an mdat payload. */
-export function mp4(opts: { createdUtc?: string; appleCreationDate?: string; payloadBytes?: number } = {}): Buffer {
+export function mp4(
+  opts: {
+    createdUtc?: string;
+    appleCreationDate?: string;
+    payloadBytes?: number;
+    /** A video track as phones write it: stored size plus a rotation matrix. */
+    video?: { width: number; height: number; rotation?: 0 | 90 | 180 | 270 };
+  } = {},
+): Buffer {
   const box = (type: string, body: Buffer) => {
     const header = Buffer.alloc(8);
     header.writeUInt32BE(body.length + 8, 0);
@@ -47,6 +55,20 @@ export function mp4(opts: { createdUtc?: string; appleCreationDate?: string; pay
   mvhd.writeUInt32BE(1000, 12);
   mvhd.writeUInt32BE(45000, 16);
   const children = [box('mvhd', mvhd)];
+  if (opts.video) {
+    const tkhd = Buffer.alloc(84);
+    const [a, b] = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] }[opts.video.rotation ?? 0];
+    const fixed = (n: number) => (n * 0x10000) | 0;
+    tkhd.writeInt32BE(fixed(a), 40); // matrix a
+    tkhd.writeInt32BE(fixed(b), 44); // matrix b
+    tkhd.writeInt32BE(fixed(-b), 52); // matrix c
+    tkhd.writeInt32BE(fixed(a), 56); // matrix d
+    tkhd.writeInt32BE(0x40000000, 72); // matrix w
+    tkhd.writeUInt32BE(opts.video.width * 0x10000, 76);
+    tkhd.writeUInt32BE(opts.video.height * 0x10000, 80);
+    const soundTkhd = Buffer.alloc(84); // audio tracks have no size
+    children.push(box('trak', box('tkhd', soundTkhd)), box('trak', box('tkhd', tkhd)));
+  }
   if (opts.appleCreationDate) {
     children.push(box('meta', Buffer.from(`keys\0com.apple.quicktime.creationdate\0ilst\0${opts.appleCreationDate}`, 'latin1')));
   }

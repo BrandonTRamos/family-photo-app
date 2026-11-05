@@ -29,7 +29,7 @@ export function createDemoApi(): ApiClient {
     tagger: { tag: unavailable },
     transcoder: { submit: unavailable, getJob: unavailable, parseEvent: () => undefined },
     images: { process: unavailable, forAi: unavailable },
-    metadata: { photoCapture: unavailable, videoCapture: unavailable },
+    metadata: { photoCapture: unavailable, videoInfo: unavailable },
     clock: { now: () => new Date() },
     ids: { next: () => crypto.randomUUID() },
     config: defaultConfig,

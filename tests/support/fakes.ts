@@ -135,6 +135,7 @@ interface FakeJob {
   itemId: string;
   inputKey: string;
   outputFolder: string;
+  size?: { width: number; height: number };
   status: TranscodeStatus;
   outputs?: VideoOutputs;
 }
@@ -150,7 +151,7 @@ export class FakeTranscoder implements VideoTranscoder {
     private readonly mediaBucket = 'media-bucket',
   ) {}
 
-  async submit(req: { itemId: string; inputKey: string; outputFolder: string }) {
+  async submit(req: { itemId: string; inputKey: string; outputFolder: string; size?: { width: number; height: number } }) {
     this.submitCalls++;
     const existing = [...this.jobs.values()].find((j) => j.itemId === req.itemId);
     if (existing) return { jobId: existing.jobId };
