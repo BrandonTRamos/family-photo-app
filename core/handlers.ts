@@ -28,10 +28,16 @@ export function makeTaggingHandler(deps: Deps): SQSHandler {
   });
 }
 
-/** Daily: removes Items that have been in Recently deleted for 30 days. */
-export function makePurgeHandler(deps: Deps): () => Promise<{ purged: number }> {
+/**
+ * Housekeeping. Daily (scheduled event): removes Items that have been in Recently deleted for 30 days.
+ * Invoked by hand with {"task":"rebuild-tag-index"}: rewrites the search index after its shape changes.
+ */
+export function makeJanitorHandler(deps: Deps): (event?: { task?: string }) => Promise<{ purged?: number; reindexed?: number }> {
   const archive = new Archive(deps);
-  return async () => ({ purged: await archive.purgeExpired() });
+  return async (event) => {
+    if (event?.task === 'rebuild-tag-index') return { reindexed: await deps.repo.rebuildTagIndex() };
+    return { purged: await archive.purgeExpired() };
+  };
 }
 
 function batch(run: (body: string) => Promise<void>): SQSHandler {

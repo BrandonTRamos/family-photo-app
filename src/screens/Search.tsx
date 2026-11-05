@@ -1,40 +1,66 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { SearchDto } from '../../core/api-types';
-import { ErrorNotice, Grid, Loading, useApi } from '../components';
-import { navigate } from '../router';
+import { ErrorNotice, Grid, useApi } from '../components';
+import { href } from '../router';
 
+/** Wait this long after the last keystroke before searching. */
+const TYPING_PAUSE_MS = 250;
+
+function termsOf(text: string): string[] {
+  return text
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+/** Results update as you type. Each comma-separated term matches the start of any word in a tag. */
 export function Search({ tags }: { tags: string[] }) {
   const api = useApi();
   const [text, setText] = useState(tags.join(', '));
   const [result, setResult] = useState<SearchDto>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const latest = useRef(0);
+  const input = useRef<HTMLInputElement>(null);
+
+  // Arriving with tags in the link (e.g. from a shared URL).
+  useEffect(() => setText(tags.join(', ')), [tags.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const terms = termsOf(text);
+  const key = terms.join(',');
 
   useEffect(() => {
-    setText(tags.join(', '));
-    setResult(undefined);
-    if (!tags.length) return;
+    const request = ++latest.current;
+    history.replaceState(null, '', href({ name: 'search', tags: terms }));
+    if (!terms.length) {
+      setResult(undefined);
+      setError(undefined);
+      setBusy(false);
+      return;
+    }
     setBusy(true);
-    setError(undefined);
-    api
-      .search(tags)
-      .then(setResult)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setBusy(false));
-  }, [api, tags.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+    const timer = setTimeout(() => {
+      api
+        .search(terms)
+        .then((r) => request === latest.current && (setResult(r), setError(undefined)))
+        .catch((e: Error) => request === latest.current && setError(e.message))
+        .finally(() => request === latest.current && setBusy(false));
+    }, TYPING_PAUSE_MS);
+    return () => clearTimeout(timer);
+  }, [api, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const next = text.split(',').map((t) => t.trim()).filter(Boolean);
-    if (next.length) navigate({ name: 'search', tags: next });
+    input.current?.blur(); // close the phone keyboard to show results
   }
 
   async function more() {
     if (!result?.cursor) return;
+    const request = latest.current;
     setBusy(true);
     try {
-      const next = await api.search(tags, result.cursor);
-      setResult({ ...next, items: [...result.items, ...next.items] });
+      const next = await api.search(terms, result.cursor);
+      if (request === latest.current) setResult({ ...next, items: [...result.items, ...next.items] });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -42,25 +68,32 @@ export function Search({ tags }: { tags: string[] }) {
     }
   }
 
+  const showing = result; // the last results stay up while the next ones load
+
   return (
     <main className="page">
       <h1 className="page-title">Search</h1>
       <form className="field" onSubmit={submit} role="search">
         <label htmlFor="q">Search by what's in the photo</label>
-        <div className="row">
-          <input id="q" className="input" type="search" placeholder="dog, beach, birthday" value={text} onChange={(e) => setText(e.target.value)} />
-          <button type="submit" className="button">
-            Search
-          </button>
-        </div>
-        <p className="hint">To combine tags, separate them with commas.</p>
+        <input
+          id="q"
+          ref={input}
+          className="input"
+          type="search"
+          autoComplete="off"
+          enterKeyHint="search"
+          placeholder="dog, beach, birthday"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <p className="hint">Part of a word is enough. To combine, separate with commas.</p>
       </form>
 
-      {result && result.related.length > 0 && (
+      {showing && showing.related.length > 0 && (
         <div className="chips" style={{ alignItems: 'center' }}>
           <span className="muted">Also try:</span>
-          {result.related.map((r) => (
-            <button key={r.key} type="button" className="chip-button" onClick={() => navigate({ name: 'search', tags: [r.key] })}>
+          {showing.related.map((r) => (
+            <button key={r.key} type="button" className="chip-button" onClick={() => setText(r.label)}>
               {r.label}
             </button>
           ))}
@@ -68,15 +101,16 @@ export function Search({ tags }: { tags: string[] }) {
       )}
 
       {error && <ErrorNotice message={error} />}
-      {busy && !result && <Loading />}
-      {result && (
+      {busy && !showing && <p className="muted">Searching…</p>}
+      {showing && (
         <>
-          <p style={{ margin: 0, borderTop: '1px solid var(--rule)', paddingTop: 12 }}>
-            <strong>{result.count}</strong> photo{result.count === 1 ? '' : 's'} and videos tagged{' '}
-            <strong>{result.tags.join(' + ')}</strong>
+          <p style={{ margin: 0, borderTop: '1px solid var(--rule)', paddingTop: 12 }} aria-live="polite">
+            <strong>{showing.count}</strong> {showing.count === 1 ? 'photo or video' : 'photos and videos'} matching{' '}
+            <strong>{showing.tags.join(' + ')}</strong>
+            {busy && <span className="muted"> · searching…</span>}
           </p>
-          <Grid items={result.items} />
-          {result.cursor && (
+          <Grid items={showing.items} />
+          {showing.cursor && (
             <button type="button" className="button outline block" disabled={busy} onClick={more}>
               {busy ? 'Loading…' : 'Show more'}
             </button>

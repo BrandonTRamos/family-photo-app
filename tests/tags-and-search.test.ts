@@ -140,6 +140,36 @@ describe('search', () => {
     expect(second.body.cursor).toBeUndefined();
   });
 
+  it('matches the start of any word in a tag, so part of a tag is enough', async () => {
+    const salon = await onePhoto(['nail salon', 'child']);
+    await onePhoto(['kitchen']);
+    for (const typed of ['nail', 'Nai', 'salon', 'nail sal', 'nail salon']) {
+      const res = await h.get<SearchDto>(dan, `/search?tags=${encodeURIComponent(typed)}`);
+      expect([typed, res.body.items.map((i) => i.id)]).toEqual([typed, [salon]]);
+    }
+    expect((await h.get<SearchDto>(dan, '/search?tags=ail')).body.count).toBe(0);
+    expect((await h.get<SearchDto>(dan, '/search?tags=nail,chi')).body.count).toBe(1);
+    expect((await h.get<SearchDto>(dan, '/search?tags=nail,kitchen')).body.count).toBe(0);
+  });
+
+  it('suggests other tags, not the ones that matched', async () => {
+    await onePhoto(['sunset', 'sunny day', 'lake']);
+    const res = await h.get<SearchDto>(dan, '/search?tags=sun');
+    expect(res.body.related.map((r) => r.key)).toEqual(['lake']);
+  });
+
+  it('stops finding a tag once it is removed', async () => {
+    const id = await onePhoto(['nail salon']);
+    await h.del(dan, `/items/${id}/tags/${encodeURIComponent('nail salon')}`);
+    expect((await h.get<SearchDto>(dan, '/search?tags=salon')).body.count).toBe(0);
+  });
+
+  it('still finds everything after the search index is rebuilt', async () => {
+    const id = await onePhoto(['nail salon']);
+    expect(await h.janitor({ task: 'rebuild-tag-index' })).toEqual({ reindexed: 1 });
+    expect((await h.get<SearchDto>(dan, '/search?tags=salon')).body.items.map((i) => i.id)).toEqual([id]);
+  });
+
   it('asks for something to look for', async () => {
     expect((await h.get(dan, '/search?tags=')).status).toBe(400);
   });

@@ -9,14 +9,15 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import type { Album, Item } from '../domain.js';
-import { placement } from '../item.js';
+import { placement, tagSearchEntries } from '../item.js';
 import type { Page, Repository } from '../ports.js';
 
 /**
  * Single-table layout:
  *   ITEM#id   / ITEM        the item (gsi1: TL by Capture date, UNDATED by created time, or DELETED by deleted time)
  *   ITEM#id   / ALBUM#aid   reverse Album membership
- *   TAG#key   / ITEM#id     tag index (verified against the item on read)
+ *   TW#entry␁key / ITEM#id  tag search index, one row per word-start entry of each Tag (gsi1: TAGWORDS,
+ *                           prefix-queried; verified against the item on read)
  *   ALBUM#aid / ALBUM       the Album (gsi1: ALBUMS)
  *   ALBUM#aid / ITEM#id     Album membership
  * Counts are key-only COUNT queries, so there are no counters to drift.
@@ -66,9 +67,9 @@ export class DynamoRepository implements Repository {
       const next = mutate(structuredClone(current));
       if (!next) return current;
       const stored: Item = { ...next, version: current.version + 1 };
-      const before = new Set(current.tags.map((t) => t.key));
-      const after = new Set(stored.tags.map((t) => t.key));
-      for (const key of after) if (!before.has(key)) await this.putTagRow(key, id);
+      const before = indexEntries(current);
+      const after = indexEntries(stored);
+      for (const entry of after) if (!before.has(entry)) await this.putIndexRow(entry, id);
       try {
         await this.doc.send(
           new PutCommand({
@@ -82,7 +83,7 @@ export class DynamoRepository implements Repository {
         if (err instanceof ConditionalCheckFailedException) continue;
         throw err;
       }
-      for (const key of before) if (!after.has(key)) await this.deleteRow(`TAG#${key}`, `ITEM#${id}`);
+      for (const entry of before) if (!after.has(entry)) await this.deleteRow(`TW#${entry}`, `ITEM#${id}`);
       return stored;
     }
     throw new Error(`Item ${id} kept changing; update abandoned`);
@@ -155,13 +156,55 @@ export class DynamoRepository implements Repository {
 
   async deleteItem(id: string): Promise<void> {
     const item = await this.getItem(id);
-    for (const tag of item?.tags ?? []) await this.deleteRow(`TAG#${tag.key}`, `ITEM#${id}`);
+    for (const entry of item ? indexEntries(item) : []) await this.deleteRow(`TW#${entry}`, `ITEM#${id}`);
     for (const albumId of await this.albumIdsForItem(id)) await this.removeFromAlbum(albumId, id);
     await this.deleteRow(`ITEM#${id}`, 'ITEM');
   }
 
-  itemIdsWithTag(tagKey: string): Promise<string[]> {
-    return this.queryAllSortKeys(`TAG#${tagKey}`, 'ITEM#');
+  async itemIdsMatching(term: string): Promise<string[]> {
+    const ids = new Set<string>();
+    let cursor: Record<string, unknown> | undefined;
+    do {
+      const res = await this.doc.send(
+        new QueryCommand({
+          TableName: this.table,
+          IndexName: 'gsi1',
+          KeyConditionExpression: 'gsi1pk = :p AND begins_with(gsi1sk, :t)',
+          ExpressionAttributeValues: { ':p': 'TAGWORDS', ':t': term },
+          ProjectionExpression: 'sk',
+          ExclusiveStartKey: cursor,
+        }),
+      );
+      for (const row of res.Items ?? []) ids.add(String(row.sk).slice('ITEM#'.length));
+      cursor = res.LastEvaluatedKey;
+    } while (cursor);
+    return [...ids];
+  }
+
+  async rebuildTagIndex(): Promise<number> {
+    let count = 0;
+    for (const list of ['TL', 'UNDATED', 'DELETED']) {
+      let cursor: Record<string, unknown> | undefined;
+      do {
+        const res = await this.doc.send(
+          new QueryCommand({
+            TableName: this.table,
+            IndexName: 'gsi1',
+            KeyConditionExpression: 'gsi1pk = :p',
+            ExpressionAttributeValues: { ':p': list },
+            ExclusiveStartKey: cursor,
+          }),
+        );
+        for (const row of res.Items ?? []) {
+          const item = row.data as Item;
+          for (const entry of indexEntries(item)) await this.putIndexRow(entry, item.id);
+          for (const tag of item.tags) await this.deleteRow(`TAG#${tag.key}`, `ITEM#${item.id}`); // the old exact-tag index
+          count++;
+        }
+        cursor = res.LastEvaluatedKey;
+      } while (cursor);
+    }
+    return count;
   }
 
   async createAlbum(album: Album): Promise<void> {
@@ -233,8 +276,13 @@ export class DynamoRepository implements Repository {
     return stripUndefined(row);
   }
 
-  private async putTagRow(key: string, itemId: string): Promise<void> {
-    await this.doc.send(new PutCommand({ TableName: this.table, Item: { pk: `TAG#${key}`, sk: `ITEM#${itemId}` } }));
+  private async putIndexRow(entry: string, itemId: string): Promise<void> {
+    await this.doc.send(
+      new PutCommand({
+        TableName: this.table,
+        Item: { pk: `TW#${entry}`, sk: `ITEM#${itemId}`, gsi1pk: 'TAGWORDS', gsi1sk: `${entry}${SEP}${itemId}` },
+      }),
+    );
   }
 
   private async deleteRow(pk: string, sk: string): Promise<void> {
@@ -272,6 +320,14 @@ export class DynamoRepository implements Repository {
     } while (cursor);
     return total;
   }
+}
+
+/** Separates the parts of a tag index entry; can't be typed into a Tag. */
+const SEP = '\u0001';
+
+/** "word-start entry␁tag key" for each Tag, e.g. "salon␁nail salon". Prefix queries on it find partial words. */
+function indexEntries(item: Item): Set<string> {
+  return new Set(item.tags.flatMap((t) => tagSearchEntries(t.key).map((entry) => `${entry}${SEP}${t.key}`)));
 }
 
 function encodeCursor(key: Record<string, unknown> | undefined): string | undefined {

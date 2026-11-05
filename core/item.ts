@@ -146,14 +146,29 @@ export function parseTag(raw: unknown): { key: string; label: string } {
   const key = label.toLowerCase();
   if (!key) throw new DomainError(400, 'invalid_tag', 'A tag cannot be empty.');
   if (key.includes(',')) throw new DomainError(400, 'invalid_tag', 'A tag cannot contain a comma.');
+  if (/\p{Cc}/u.test(key)) throw new DomainError(400, 'invalid_tag', 'A tag can only contain letters, numbers and punctuation.');
   if (key.length > MAX_TAG_LENGTH) {
     throw new DomainError(400, 'invalid_tag', `A tag can be at most ${MAX_TAG_LENGTH} characters.`);
   }
   return { key, label };
 }
 
-export function hasTags(it: Item, keys: string[]): boolean {
-  return keys.every((k) => it.tags.some((t) => t.key === k));
+/**
+ * Search: a Tag is found by typing the start of any of its words, so "nail salon" is found by
+ * "nail", "sal" or "nail sal", but not "ail". These are the strings a typed term must begin.
+ */
+export function tagSearchEntries(tagKey: string): string[] {
+  const words = tagKey.split(' ');
+  return words.map((_, i) => words.slice(i).join(' '));
+}
+
+/** Every term (already parsed with parseTag) matches one of the Item's Tags. */
+export function matchesSearch(it: Item, terms: string[]): boolean {
+  return terms.every((term) => it.tags.some((t) => tagMatches(t.key, term)));
+}
+
+export function tagMatches(tagKey: string, term: string): boolean {
+  return tagSearchEntries(tagKey).some((entry) => entry.startsWith(term));
 }
 
 export function addFamilyTag(it: Item, tag: { key: string; label: string }, by: Person): Item | undefined {

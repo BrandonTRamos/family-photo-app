@@ -1,7 +1,7 @@
 // In-memory Repository: the browser preview runs on it, and the test suite runs against it as well as DynamoDB,
 // so both adapters keep the same behaviour. Runs anywhere (no Node APIs).
 import type { Album, Item } from '../domain.js';
-import { placement, type Placement } from '../item.js';
+import { placement, tagMatches, type Placement } from '../item.js';
 import type { Page, Repository } from '../ports.js';
 
 export class MemoryRepository implements Repository {
@@ -56,8 +56,12 @@ export class MemoryRepository implements Repository {
     return this.placed('undated').length;
   }
 
-  async itemIdsWithTag(tagKey: string): Promise<string[]> {
-    return [...this.items.values()].filter((i) => i.tags.some((t) => t.key === tagKey)).map((i) => i.id).sort();
+  async itemIdsMatching(term: string): Promise<string[]> {
+    return [...this.items.values()].filter((i) => i.tags.some((t) => tagMatches(t.key, term))).map((i) => i.id).sort();
+  }
+
+  async rebuildTagIndex(): Promise<number> {
+    return this.items.size; // matched straight from the Items; nothing to rebuild
   }
 
   async deletedItems(): Promise<Item[]> {

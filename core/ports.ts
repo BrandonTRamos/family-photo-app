@@ -23,7 +23,10 @@ export interface Repository {
   countTimeline(datePrefix: string): Promise<number>;
   undated(opts: { limit: number; cursor?: string }): Promise<Page<Item>>;
   countUndated(): Promise<number>;
-  itemIdsWithTag(tagKey: string): Promise<string[]>;
+  /** Items with a Tag that a search term matches (see tagSearchEntries in item.ts). Verify against the Item. */
+  itemIdsMatching(term: string): Promise<string[]>;
+  /** One-off after the tag index changes shape: rewrites it for every Item. Returns how many Items. */
+  rebuildTagIndex(): Promise<number>;
   /** Every Item in Recently deleted, all uploaders. */
   deletedItems(): Promise<Item[]>;
   /** Removes the Item for good, with its Tag index entries and Album memberships. Safe to repeat. */

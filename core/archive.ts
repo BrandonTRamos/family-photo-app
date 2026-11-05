@@ -4,13 +4,13 @@ import {
   addFamilyTag,
   canSetCaptureDate,
   compareForDisplay,
-  hasTags,
   canDelete,
   isPurgeDue,
   isReady,
   isUploader,
   isVisibleTo,
   markUploaded,
+  matchesSearch,
   mediaKeys,
   moveToRecentlyDeleted,
   newUpload,
@@ -19,6 +19,7 @@ import {
   removeTag,
   restore,
   setCaptureDate,
+  tagMatches,
 } from './item.js';
 import {
   PHOTO_TYPES,
@@ -197,20 +198,18 @@ export class Archive {
   }
 
   async search(query: Record<string, string | undefined>): Promise<SearchDto> {
-    const keys = [...new Set((query.tags ?? '').split(',').filter((t) => t.trim()).map((t) => parseTag(t).key))];
-    if (keys.length === 0) throw new DomainError(400, 'invalid_request', 'Type what you are looking for.');
-    const idLists = await Promise.all(keys.map((k) => this.d.repo.itemIdsWithTag(k)));
+    const terms = [...new Set((query.tags ?? '').split(',').filter((t) => t.trim()).map((t) => parseTag(t).key))];
+    if (terms.length === 0) throw new DomainError(400, 'invalid_request', 'Type what you are looking for.');
+    const idLists = await Promise.all(terms.map((t) => this.d.repo.itemIdsMatching(t)));
     const [first, ...rest] = idLists.map((ids) => new Set(ids));
     const candidates = [...first].filter((id) => rest.every((s) => s.has(id)));
     const matched = sortForDisplay(
-      (await this.d.repo.getItems(candidates)).filter(
-        (i) => isReady(i) && hasTags(i, keys),
-      ),
+      (await this.d.repo.getItems(candidates)).filter((i) => isReady(i) && matchesSearch(i, terms)),
     );
     const tally = new Map<string, { label: string; n: number }>();
     for (const item of matched) {
       for (const t of item.tags) {
-        if (keys.includes(t.key)) continue;
+        if (terms.some((term) => tagMatches(t.key, term))) continue;
         const entry = tally.get(t.key) ?? { label: t.label, n: 0 };
         entry.n++;
         tally.set(t.key, entry);
@@ -221,7 +220,7 @@ export class Archive {
       .slice(0, 4)
       .map(([key, v]) => ({ key, label: v.label }));
     const { page, cursor } = offsetPage(matched, query.cursor, parseLimit(query.limit, 60));
-    return { tags: keys, count: matched.length, items: await Promise.all(page.map((i) => this.summary(i))), related, cursor };
+    return { tags: terms, count: matched.length, items: await Promise.all(page.map((i) => this.summary(i))), related, cursor };
   }
 
   // ---- edits ----

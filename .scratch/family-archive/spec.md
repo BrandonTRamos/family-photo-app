@@ -205,3 +205,9 @@ Decided with the user after launch:
 - 30 days after deletion a daily job deletes it for good: its files, Tag index entries and Album memberships. "Delete now" in Recently deleted does the same at once, after a confirmation.
 - Deleting is done from the item's own page only. Selecting several at once is deferred.
 
+
+## Addendum: live, partial search (2026-11-05)
+
+- Results update as the user types, after a 250 ms pause. There is no Search button.
+- Each comma-separated term matches the start of any word in a Tag: "nail", "salon" and "nail sal" all find "nail salon"; "ail" does not. Terms combine as AND.
+- Index: one row per word-start of each Tag (`TW#…`, gsi1 `TAGWORDS`), prefix-queried. After deploying, rebuild it once for existing Items by invoking the Janitor with `{"task":"rebuild-tag-index"}`.
