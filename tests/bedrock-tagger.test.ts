@@ -14,6 +14,11 @@ describe('reading the AI model reply', () => {
     expect(parseTagJson('["chair", "mirror"]')).toEqual(['chair', 'mirror']);
   });
 
+  it('keeps the tags from a reply cut off mid-list by a repetition loop', () => {
+    const cut = '{"tags":["fountain","water","child","minnie mouse","earring","earring","earring","ea';
+    expect(parseTagJson(cut)).toEqual(['fountain', 'water', 'child', 'minnie mouse', 'earring', 'earring', 'earring']);
+  });
+
   it('refuses a reply with no tags, so the photo is retried instead of marked done', () => {
     expect(() => parseTagJson('I cannot help with that.')).toThrow(/no tags.*I cannot help/);
     expect(() => parseTagJson('{"tags":[]}')).toThrow(/no tags/);

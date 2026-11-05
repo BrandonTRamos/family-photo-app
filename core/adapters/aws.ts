@@ -119,10 +119,11 @@ export class SqsQueue<M> implements Queue<M> {
 const TAGGING_SYSTEM_PROMPT = [
   'You tag family photos so relatives can search for them.',
   'Reply with JSON only, exactly like {"tags":["beach","beach umbrella","sunny day"]}.',
-  `Give 3 to ${MAX_AI_TAGS} short lowercase tags (1 to 3 words each) for what is actually visible:`,
+  `Give 3 to ${MAX_AI_TAGS} different short lowercase tags (1 to 3 words each) for what is actually visible:`,
   'objects, animals, places, settings, activities, events, weather and seasons.',
   'Never name or guess who anyone is. Never guess names, ages, family relationships, ethnicity, religion, health or other personal traits.',
   'For people use only generic words such as "person", "child", "baby" or "group".',
+  `Never repeat a tag. Stop after ${MAX_AI_TAGS} tags.`,
 ].join(' ');
 
 export class BedrockTagger implements AiTagger {
@@ -138,7 +139,7 @@ export class BedrockTagger implements AiTagger {
         modelId: this.modelId,
         system: [{ text: TAGGING_SYSTEM_PROMPT }],
         messages: [{ role: 'user', content: [{ image: { format, source: { bytes: image } } }, { text: 'Tag this photo.' }] }],
-        inferenceConfig: { maxTokens: 300, temperature: 0.2 },
+        inferenceConfig: { maxTokens: 150, temperature: 0.4 }, // 12 short tags fit easily; a loop stops sooner
       }),
     );
     const text = (res.output?.message?.content ?? []).map((c) => ('text' in c ? c.text : '')).join('');
@@ -162,6 +163,12 @@ export function parseTagJson(text: string): string[] {
     } catch {
       // try the next shape
     }
+  }
+  // A reply cut off by the length limit (the model can loop on one word): keep each complete tag before the cut.
+  const open = text.indexOf('[');
+  if (open >= 0) {
+    const tags = [...text.slice(open).matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse(m[0]) as string).filter((t) => t.trim() !== '');
+    if (tags.length) return tags;
   }
   throw new Error(`AI model reply had no tags: ${JSON.stringify(text.slice(0, 500))}`);
 }
