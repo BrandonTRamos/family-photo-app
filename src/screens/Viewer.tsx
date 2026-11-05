@@ -3,7 +3,8 @@ import type { ItemDetailDto } from '../../core/api-types';
 import { ErrorNotice, Loading, Sheet, useApi, useLoad } from '../components';
 import { fullDate } from '../format';
 import { BackIcon, CloseIcon, SparkleIcon } from '../icons';
-import { href } from '../router';
+import { setFlash } from '../flash';
+import { href, navigate } from '../router';
 
 export function Viewer({ id }: { id: string }) {
   const api = useApi();
@@ -219,7 +220,10 @@ export function Viewer({ id }: { id: string }) {
             className="button danger block"
             onClick={async () => {
               setConfirmDelete(false);
-              await act(() => api.deleteItem(id));
+              if (await act(() => api.deleteItem(id))) {
+                setFlash({ deleted: { id, kind: item.kind } });
+                navigate({ name: 'timeline' });
+              }
             }}
           >
             Delete

@@ -3,6 +3,7 @@ import type { TimelineDto, TimelineMonthDto } from '../../core/api-types';
 import { ErrorNotice, Grid, Loading, useApi } from '../components';
 import { dayHeading, items, monthName } from '../format';
 import { ChevronIcon } from '../icons';
+import { takeFlash } from '../flash';
 import { href } from '../router';
 
 /** Pages can split a month or day; join them back together. */
@@ -31,6 +32,7 @@ export function Timeline() {
   const [busy, setBusy] = useState(false);
   const [year, setYear] = useState('');
   const [jumpedTo, setJumpedTo] = useState<number>();
+  const [flash, setFlash] = useState(takeFlash);
 
   async function load(opts: { cursor?: string; year?: number; replace?: boolean }) {
     setBusy(true);
@@ -51,6 +53,16 @@ export function Timeline() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function undoDelete(id: string) {
+    try {
+      await api.restoreItem(id);
+      setFlash(undefined);
+      await load({ replace: true, year: jumpedTo });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   function jump(e: FormEvent) {
     e.preventDefault();
     const y = Number(year);
@@ -68,6 +80,17 @@ export function Timeline() {
         <h1 className="page-title">Family Archive</h1>
         <p className="subtitle">Everyone's photos and videos, newest first</p>
       </header>
+
+      {flash && (
+        <div className="notice row" role="status" style={{ justifyContent: 'space-between' }}>
+          <span>
+            {flash.deleted.kind === 'video' ? 'Video' : 'Photo'} moved to <a href={href({ name: 'deleted' })}>Recently deleted</a>.
+          </span>
+          <button type="button" className="button small outline" onClick={() => undoDelete(flash.deleted.id)}>
+            Undo
+          </button>
+        </div>
+      )}
 
       {page && page.undatedCount > 0 && (
         <a className="banner" href={href({ name: 'undated' })}>
