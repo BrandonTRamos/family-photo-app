@@ -8,6 +8,10 @@ A private, shared place where a family keeps its photos and videos, older memori
 The single shared collection holding every photo and video the family has added.
 _Avoid_: Library, album (for the whole collection), gallery
 
+**Item**:
+A single photo or video in the Archive. It is ready once processed; only ready Items appear on the Timeline, in Undated, in Albums or in search.
+_Avoid_: Asset, media, file, post
+
 **Album**:
 A named group of items from the Archive, made by a family member (for example, "Lake trip 2019"). An item can be in any number of Albums and always remains in the Archive; deleting an Album never deletes its items.
 _Avoid_: Folder, collection, story

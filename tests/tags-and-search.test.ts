@@ -100,6 +100,12 @@ describe('editing tags', () => {
     const id = await onePhoto(['grass']);
     expect((await h.del(dan, `/items/${id}/tags/lion`)).status).toBe(404);
   });
+
+  it('removes a tag only once when two people remove it at the same moment', async () => {
+    const id = await onePhoto(['lion']);
+    const results = await Promise.all([h.del(dan, `/items/${id}/tags/lion`), h.del(rosa, `/items/${id}/tags/lion`)]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 404]);
+  });
 });
 
 describe('search', () => {

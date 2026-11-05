@@ -1,13 +1,18 @@
 // Family-facing use cases behind the HTTP API.
+import { DomainError, parseExactDate, type Album, type Item, type Person } from './domain.js';
 import {
-  DomainError,
-  parseExactDate,
-  parseTagInput,
-  timelineSortKey,
-  type Album,
-  type Item,
-  type Person,
-} from './domain.js';
+  addFamilyTag,
+  canSetCaptureDate,
+  compareForDisplay,
+  hasTags,
+  isReady,
+  isVisible,
+  markUploaded,
+  newUpload,
+  parseTag,
+  removeTag,
+  setCaptureDate,
+} from './item.js';
 import {
   PHOTO_TYPES,
   VIDEO_TYPES,
@@ -85,22 +90,20 @@ export class Archive {
     const id = this.d.ids.next();
     const stagingKey = `uploads/${id}/original`;
     const grant = await this.d.staging.createUploadGrant(stagingKey, type, size);
-    await this.d.repo.createItem({
-      id,
-      kind,
-      status: 'uploading',
-      version: 1,
-      contentType: type,
-      size,
-      addedBy: user,
-      createdAt: this.d.clock.now().toISOString(),
-      stagingKey,
-      multipartUploadId: grant.mode === 'multipart' ? grant.uploadId : undefined,
-      requestedCaptureDate,
-      requestedAlbumId: albumId,
-      tags: [],
-      suppressedAiTags: [],
-    });
+    await this.d.repo.createItem(
+      newUpload({
+        id,
+        kind,
+        contentType: type,
+        size,
+        addedBy: user,
+        createdAt: this.d.clock.now().toISOString(),
+        stagingKey,
+        multipartUploadId: grant.mode === 'multipart' ? grant.uploadId : undefined,
+        requestedCaptureDate,
+        requestedAlbumId: albumId,
+      }),
+    );
     return { ok: true, name, itemId: id, grant };
   }
 
@@ -135,9 +138,7 @@ export class Archive {
       throw new DomainError(409, 'upload_incomplete', 'The file did not arrive in full. Please try again.');
     }
 
-    const updated = await this.d.repo.updateItem(id, (it) =>
-      it.status === 'uploading' ? { ...it, status: 'processing' } : undefined,
-    );
+    const updated = await this.d.repo.updateItem(id, markUploaded);
     if (updated?.status === 'processing') await this.d.processingQueue.send({ kind: 'ingest', itemId: id });
     return { id, status: updated?.status ?? 'processing' };
   }
@@ -186,19 +187,19 @@ export class Archive {
 
   async item(id: string): Promise<ItemDetailDto> {
     const item = await this.d.repo.getItem(id);
-    if (!item || item.status === 'uploading') throw new DomainError(404, 'not_found', 'That item was not found.');
+    if (!item || !isVisible(item)) throw new DomainError(404, 'not_found', 'That item was not found.');
     return this.detail(item);
   }
 
   async search(query: Record<string, string | undefined>): Promise<SearchDto> {
-    const keys = [...new Set((query.tags ?? '').split(',').filter((t) => t.trim()).map((t) => parseTagInput(t).key))];
+    const keys = [...new Set((query.tags ?? '').split(',').filter((t) => t.trim()).map((t) => parseTag(t).key))];
     if (keys.length === 0) throw new DomainError(400, 'invalid_request', 'Type what you are looking for.');
     const idLists = await Promise.all(keys.map((k) => this.d.repo.itemIdsWithTag(k)));
     const [first, ...rest] = idLists.map((ids) => new Set(ids));
     const candidates = [...first].filter((id) => rest.every((s) => s.has(id)));
     const matched = sortForDisplay(
       (await this.d.repo.getItems(candidates)).filter(
-        (i) => i.status === 'ready' && keys.every((k) => i.tags.some((t) => t.key === k)),
+        (i) => isReady(i) && hasTags(i, keys),
       ),
     );
     const tally = new Map<string, { label: string; n: number }>();
@@ -221,41 +222,22 @@ export class Archive {
   // ---- edits ----
 
   async addTag(user: Person, id: string, body: unknown): Promise<ItemDetailDto> {
-    const { key, label } = parseTagInput((body as { label?: unknown } | undefined)?.label);
-    const item = await this.d.repo.updateItem(id, (it) => {
-      if (it.status !== 'ready') throw new DomainError(409, 'not_ready', 'This item is still being processed.');
-      if (it.tags.some((t) => t.key === key)) return undefined;
-      it.tags.push({ key, label, source: 'family', addedBy: user });
-      return it;
-    });
+    const tag = parseTag((body as { label?: unknown } | undefined)?.label);
+    const item = await this.d.repo.updateItem(id, (it) => addFamilyTag(it, tag, user));
     if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
     return this.detail(item);
   }
 
   async removeTag(id: string, rawKey: string): Promise<ItemDetailDto> {
-    const { key } = parseTagInput(rawKey);
-    let found = false;
-    const item = await this.d.repo.updateItem(id, (it) => {
-      const tag = it.tags.find((t) => t.key === key);
-      if (!tag) return undefined;
-      found = true;
-      it.tags = it.tags.filter((t) => t.key !== key);
-      if (tag.source === 'ai' && !it.suppressedAiTags.includes(key)) it.suppressedAiTags.push(key);
-      return it;
-    });
+    const { key } = parseTag(rawKey);
+    const item = await this.d.repo.updateItem(id, (it) => removeTag(it, key));
     if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
-    if (!found) throw new DomainError(404, 'tag_not_found', 'That tag is not on this item.');
     return this.detail(item);
   }
 
   async setCaptureDate(id: string, body: unknown): Promise<ItemDetailDto> {
     const date = parseExactDate((body as { date?: unknown } | undefined)?.date, this.today());
-    const item = await this.d.repo.updateItem(id, (it) => {
-      if (it.status !== 'ready') throw new DomainError(409, 'not_ready', 'This item is still being processed.');
-      if (it.capture) throw new DomainError(409, 'already_dated', 'This item already has a date.');
-      it.capture = { date, source: 'family' };
-      return it;
-    });
+    const item = await this.d.repo.updateItem(id, (it) => setCaptureDate(it, date));
     if (!item) throw new DomainError(404, 'not_found', 'That item was not found.');
     return this.detail(item);
   }
@@ -294,7 +276,7 @@ export class Archive {
     const album = await this.requireAlbum(albumId);
     const itemId = (body as { itemId?: unknown } | undefined)?.itemId;
     const item = typeof itemId === 'string' ? await this.d.repo.getItem(itemId) : undefined;
-    if (!item || item.status !== 'ready') throw new DomainError(404, 'not_found', 'That item was not found.');
+    if (!item || !isReady(item)) throw new DomainError(404, 'not_found', 'That item was not found.');
     await this.d.repo.addToAlbum(albumId, item.id, this.d.clock.now().toISOString());
     return this.albumDto(album);
   }
@@ -321,7 +303,7 @@ export class Archive {
 
   private async albumItems(albumId: string): Promise<Item[]> {
     const ids = await this.d.repo.albumItemIds(albumId);
-    return sortForDisplay((await this.d.repo.getItems(ids)).filter((i) => i.status === 'ready'));
+    return sortForDisplay((await this.d.repo.getItems(ids)).filter(isReady));
   }
 
   private async albumDto(album: Album, items?: Item[]): Promise<AlbumDto> {
@@ -352,17 +334,18 @@ export class Archive {
   private async detail(item: Item): Promise<ItemDetailDto> {
     const albumIds = await this.d.repo.albumIdsForItem(item.id);
     const albums = (await Promise.all(albumIds.map((a) => this.d.repo.getAlbum(a)))).filter((a): a is Album => !!a);
-    const m = item.status === 'ready' ? item.media : undefined;
+    const ready = isReady(item);
+    const m = ready ? item.media : undefined;
     return {
       id: item.id,
       kind: item.kind,
       status: item.status,
       addedBy: item.addedBy.name,
       capture:
-        item.status === 'ready' && item.capture
+        ready && item.capture
           ? { date: item.capture.date, time: item.capture.time, source: item.capture.source }
           : undefined,
-      canSetDate: item.status === 'ready' && !item.capture,
+      canSetDate: canSetCaptureDate(item),
       thumbUrl: m ? await this.url(m.thumbKey) : undefined,
       displayUrl: m?.displayKey ? await this.url(m.displayKey) : undefined,
       videoUrl: m?.videoKey ? await this.url(m.videoKey) : undefined,
@@ -377,16 +360,8 @@ export class Archive {
   }
 }
 
-/** Dated items newest first, then Undated items newest added first. */
-function sortForDisplay(items: Item[]): Item[] {
-  return [...items].sort((a, b) => {
-    const ka = timelineSortKey(a);
-    const kb = timelineSortKey(b);
-    if (ka && kb) return kb.localeCompare(ka);
-    if (ka) return -1;
-    if (kb) return 1;
-    return b.createdAt.localeCompare(a.createdAt);
-  });
+function sortForDisplay(list: Item[]): Item[] {
+  return [...list].sort(compareForDisplay);
 }
 
 function offsetPage<T>(all: T[], cursor: string | undefined, limit: number): { page: T[]; cursor?: string } {

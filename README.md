@@ -4,7 +4,7 @@ A private, shared place for the family's photos and videos. Browse by a Timeline
 
 ## Layout
 
-- `core/`: domain, use cases (`archive.ts`), processing and AI tagging (`pipeline.ts`), Lambda handlers, and adapters (DynamoDB, S3, SQS, Bedrock, MediaConvert, sharp, exifr). `core/api-types.ts` is the HTTP contract shared with the web app.
+- `core/`: domain types, Item rules (`item.ts`: lifecycle, placement, Tags), use cases (`archive.ts`), processing and AI tagging (`pipeline.ts`), Lambda handlers, and adapters (DynamoDB, S3, SQS, Bedrock, MediaConvert, sharp, exifr). `core/api-types.ts` is the HTTP contract shared with the web app.
 - `amplify/`: Amplify Gen 2 backend. Auth via `defineAuth`; everything else is CDK in `archive-resources.ts`.
 - `src/`: React web app in the Warm keepsake design. Runs in demo mode with sample photos when no backend is configured.
 - `tests/`: tests through the HTTP API, with the workers running behind it.

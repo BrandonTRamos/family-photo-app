@@ -78,25 +78,6 @@ export class DomainError extends Error {
   }
 }
 
-export const MAX_TAG_LENGTH = 40;
-export const MAX_AI_TAGS = 12;
-
-export function normalizeTag(raw: string): string {
-  return raw.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-export function parseTagInput(raw: unknown): { key: string; label: string } {
-  if (typeof raw !== 'string') throw new DomainError(400, 'invalid_tag', 'A tag must be text.');
-  const label = raw.normalize('NFKC').trim().replace(/\s+/g, ' ');
-  const key = label.toLowerCase();
-  if (!key) throw new DomainError(400, 'invalid_tag', 'A tag cannot be empty.');
-  if (key.includes(',')) throw new DomainError(400, 'invalid_tag', 'A tag cannot contain a comma.');
-  if (key.length > MAX_TAG_LENGTH) {
-    throw new DomainError(400, 'invalid_tag', `A tag can be at most ${MAX_TAG_LENGTH} characters.`);
-  }
-  return { key, label };
-}
-
 /** Exact calendar date only (YYYY-MM-DD), not in the future. */
 export function parseExactDate(raw: unknown, today: string): string {
   if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
@@ -109,18 +90,4 @@ export function parseExactDate(raw: unknown, today: string): string {
   }
   if (raw > today) throw new DomainError(400, 'invalid_date', 'The date cannot be in the future.');
   return raw;
-}
-
-/** Sort key placing an item on the Timeline: local date-time, then id. */
-export function timelineSortKey(item: Pick<Item, 'id' | 'capture'>): string | undefined {
-  if (!item.capture) return undefined;
-  return `${item.capture.date}T${item.capture.time ?? '00:00:00'}#${item.id}`;
-}
-
-export function isOnTimeline(item: Item): boolean {
-  return item.status === 'ready' && item.capture !== undefined;
-}
-
-export function isUndated(item: Item): boolean {
-  return item.status === 'ready' && item.capture === undefined;
 }

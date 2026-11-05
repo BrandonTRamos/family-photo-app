@@ -1,6 +1,7 @@
 // Background workers: processing (photos, videos) and photo AI tagging. Every step is safe to repeat.
 import { createHash } from 'node:crypto';
-import { MAX_AI_TAGS, parseTagInput, type CaptureDate, type Item, type ItemMedia } from './domain.js';
+import type { CaptureDate, Item, ItemMedia } from './domain.js';
+import { applyAiTags, captureFor, fail as failItem, needsAiTags, publish as publishItem, recordVideoJob } from './item.js';
 import type { Deps, ProcessingMessage, VideoOutputs } from './ports.js';
 
 export class Pipeline {
@@ -39,7 +40,7 @@ export class Pipeline {
       return this.fail(item, 'This photo has no visible size.');
     }
 
-    await this.publish(item.id, this.captureFor(item, fileDate), {
+    await this.publish(item.id, captureFor(item, fileDate), {
       thumbKey,
       displayKey,
       width: processed.display.width,
@@ -60,12 +61,9 @@ export class Pipeline {
       inputKey: item.stagingKey,
       outputPrefix: `items/${item.id}/video/`,
     });
-    const capture = this.captureFor(item, fileDate);
-    await this.d.repo.updateItem(item.id, (it) =>
-      it.status === 'processing' && !it.videoJob
-        ? { ...it, capture, videoJob: { jobId, submittedAt: this.d.clock.now().toISOString() } }
-        : undefined,
-    );
+    const capture = captureFor(item, fileDate);
+    const at = this.d.clock.now().toISOString();
+    await this.d.repo.updateItem(item.id, (it) => recordVideoJob(it, jobId, at, capture));
   }
 
   /** A redelivered ingest for a video already submitted: ask MediaConvert where it stands. */
@@ -109,32 +107,23 @@ export class Pipeline {
     });
   }
 
-  private captureFor(item: Item, fileDate: CaptureDate | undefined): CaptureDate | undefined {
-    if (fileDate) return fileDate;
-    return item.requestedCaptureDate ? { date: item.requestedCaptureDate, source: 'family' } : undefined;
-  }
-
   private async publish(itemId: string, capture: CaptureDate | undefined, media: ItemMedia): Promise<void> {
     const pending = await this.d.repo.getItem(itemId);
     if (pending?.requestedAlbumId && (await this.d.repo.getAlbum(pending.requestedAlbumId))) {
       await this.d.repo.addToAlbum(pending.requestedAlbumId, itemId, this.d.clock.now().toISOString());
     }
-    const published = await this.d.repo.updateItem(itemId, (it) =>
-      it.status === 'processing' ? { ...it, status: 'ready', capture, media, failureReason: undefined } : undefined,
-    );
+    const published = await this.d.repo.updateItem(itemId, (it) => publishItem(it, capture, media));
     if (published?.status === 'ready') await this.afterPublish(published);
   }
 
   private async afterPublish(item: Item): Promise<void> {
-    if (item.kind === 'photo' && !item.aiTagging) await this.d.taggingQueue.send({ kind: 'tag', itemId: item.id });
+    if (needsAiTags(item)) await this.d.taggingQueue.send({ kind: 'tag', itemId: item.id });
     await this.d.staging.delete(item.stagingKey); // only after the outputs were verified
   }
 
   /** Failed inputs stay in staging for recovery. */
   private async fail(item: Item, reason: string): Promise<void> {
-    await this.d.repo.updateItem(item.id, (it) =>
-      it.status === 'processing' || it.status === 'uploading' ? { ...it, status: 'failed', failureReason: reason } : undefined,
-    );
+    await this.d.repo.updateItem(item.id, (it) => failItem(it, reason));
   }
 
   private async writeVerified(key: string, bytes: Buffer): Promise<void> {
@@ -147,40 +136,12 @@ export class Pipeline {
 
   async tag(itemId: string): Promise<void> {
     const item = await this.d.repo.getItem(itemId);
-    if (!item || item.kind !== 'photo' || item.status !== 'ready' || item.aiTagging || !item.media?.displayKey) return;
-    const small = await this.d.images.forAi(await this.d.media.read(item.media.displayKey));
+    if (!item || !needsAiTags(item)) return;
+    const small = await this.d.images.forAi(await this.d.media.read(item.media!.displayKey!));
     const result = await this.d.tagger.tag(small, 'image/jpeg');
-    const proposed = boundTags(result.tags);
-    await this.d.repo.updateItem(itemId, (it) => {
-      if (it.aiTagging) return undefined;
-      const present = new Set(it.tags.map((t) => t.key));
-      for (const tag of proposed) {
-        if (present.has(tag.key) || it.suppressedAiTags.includes(tag.key)) continue;
-        it.tags.push({ key: tag.key, label: tag.label, source: 'ai', model: result.model });
-        present.add(tag.key);
-      }
-      it.aiTagging = { model: result.model, at: this.d.clock.now().toISOString() };
-      return it;
-    });
+    const at = this.d.clock.now().toISOString();
+    await this.d.repo.updateItem(itemId, (it) => applyAiTags(it, result.tags, result.model, at));
   }
-}
-
-export function boundTags(raw: unknown): { key: string; label: string }[] {
-  if (!Array.isArray(raw)) return [];
-  const out: { key: string; label: string }[] = [];
-  const seen = new Set<string>();
-  for (const value of raw) {
-    try {
-      const { key } = parseTagInput(value);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ key, label: key });
-    } catch {
-      // drop anything that isn't a short phrase
-    }
-    if (out.length >= MAX_AI_TAGS) break;
-  }
-  return out;
 }
 
 function sha256(bytes: Buffer): string {

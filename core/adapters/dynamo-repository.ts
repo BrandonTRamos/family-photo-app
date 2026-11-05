@@ -8,7 +8,8 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
-import { isOnTimeline, isUndated, timelineSortKey, type Album, type Item } from '../domain.js';
+import type { Album, Item } from '../domain.js';
+import { placement } from '../item.js';
 import type { Page, Repository } from '../ports.js';
 
 /**
@@ -204,12 +205,10 @@ export class DynamoRepository implements Repository {
 
   private itemRow(item: Item): Record<string, unknown> {
     const row: Record<string, unknown> = { pk: `ITEM#${item.id}`, sk: 'ITEM', version: item.version, data: item };
-    if (isOnTimeline(item)) {
-      row.gsi1pk = 'TL';
-      row.gsi1sk = timelineSortKey(item);
-    } else if (isUndated(item)) {
-      row.gsi1pk = 'UNDATED';
-      row.gsi1sk = `${item.createdAt}#${item.id}`;
+    const where = placement(item);
+    if (where) {
+      row.gsi1pk = where.list === 'timeline' ? 'TL' : 'UNDATED';
+      row.gsi1sk = where.sortKey;
     }
     return stripUndefined(row);
   }
