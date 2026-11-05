@@ -36,7 +36,7 @@ describe('AI tags', () => {
     expect(tags[0]).toBe('dog');
     expect(tags.filter((t) => t === 'dog')).toHaveLength(1);
     expect(tags.every((t) => t.length <= 40)).toBe(true);
-    expect(tags).toHaveLength(12);
+    expect(tags).toHaveLength(6);
   });
 
   it('never block a photo from being seen when tagging fails', async () => {

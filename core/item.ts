@@ -5,7 +5,7 @@
 import { DomainError, type CaptureDate, type Item, type ItemKind, type ItemMedia, type Person } from './domain.js';
 
 export const MAX_TAG_LENGTH = 40;
-export const MAX_AI_TAGS = 12;
+export const MAX_AI_TAGS = 6;
 
 // ---- lifecycle: uploading → processing → ready | failed; ready ⇄ deleted (Recently deleted) → purged ----
 

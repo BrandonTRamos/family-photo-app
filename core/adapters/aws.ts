@@ -119,7 +119,7 @@ export class SqsQueue<M> implements Queue<M> {
 const TAGGING_SYSTEM_PROMPT = [
   'You tag family photos so relatives can search for them.',
   'Reply with JSON only, exactly like {"tags":["beach","beach umbrella","sunny day"]}.',
-  `Give 3 to ${MAX_AI_TAGS} different short lowercase tags (1 to 3 words each) for what is actually visible:`,
+  `Give the ${MAX_AI_TAGS} best different short lowercase tags (1 to 3 words each), most important first, for what is actually visible:`,
   'objects, animals, places, settings, activities, events, weather and seasons.',
   'Never name or guess who anyone is. Never guess names, ages, family relationships, ethnicity, religion, health or other personal traits.',
   'For people use only generic words such as "person", "child", "baby" or "group".',
@@ -139,7 +139,7 @@ export class BedrockTagger implements AiTagger {
         modelId: this.modelId,
         system: [{ text: TAGGING_SYSTEM_PROMPT }],
         messages: [{ role: 'user', content: [{ image: { format, source: { bytes: image } } }, { text: 'Tag this photo.' }] }],
-        inferenceConfig: { maxTokens: 150, temperature: 0.4 }, // 12 short tags fit easily; a loop stops sooner
+        inferenceConfig: { maxTokens: 100, temperature: 0.4 }, // 6 short tags fit easily; a loop stops sooner
       }),
     );
     const text = (res.output?.message?.content ?? []).map((c) => ('text' in c ? c.text : '')).join('');
