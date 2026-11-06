@@ -1,18 +1,18 @@
-/* Warm keepsake: cream paper, serif headings, photos as white-bordered prints. */
+/* Lake house: misty blue paper, serif headings, photos as white-bordered prints. */
 :root {
-  --paper: #f6efe3;
-  --paper-deep: #efe4d2;
-  --paper-bar: #fbf6ec;
-  --print: #fffdf8;
-  --ink: #2e2620;
-  --muted: #6b5d50;
-  --rule: #dccfbb;
-  --accent: #a4502f;
-  --accent-dark: #7e3a20;
-  --danger: #9b2c1f;
+  --paper: #eef3f5;
+  --paper-deep: #dde7ec;
+  --paper-bar: #f7fafb;
+  --print: #ffffff;
+  --ink: #1b2a35;
+  --muted: #536572;
+  --rule: #c9d6dd;
+  --accent: #2b6a8a;
+  --accent-dark: #1d4e67;
+  --danger: #b3261e;
   --serif: 'Fraunces', Georgia, serif;
   --sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
-  --shadow: 0 1px 3px rgba(46, 38, 32, 0.2);
+  --shadow: 0 1px 3px rgba(27, 42, 53, 0.2);
   --tab-height: 86px;
 }
 
@@ -321,7 +321,7 @@ select {
   gap: 4px;
   padding: 3px 7px;
   border-radius: 4px;
-  background: rgba(46, 38, 32, 0.85);
+  background: rgba(27, 42, 53, 0.85);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
@@ -390,7 +390,7 @@ select {
   margin: 0;
   background: var(--print);
   padding: 8px 8px 22px;
-  box-shadow: 0 2px 6px rgba(46, 38, 32, 0.22);
+  box-shadow: 0 2px 6px rgba(27, 42, 53, 0.22);
   max-width: 900px;
 }
 .viewer-print img,
@@ -399,7 +399,7 @@ select {
   width: 100%;
   max-height: 75vh;
   object-fit: contain;
-  background: #e8dcc8;
+  background: var(--paper-deep);
 }
 .full-date {
   margin: 0;
@@ -457,7 +457,7 @@ select {
   cursor: pointer;
 }
 .chip-button.add {
-  border: 2px dashed #b9a88f;
+  border: 2px dashed #9fb3bf;
   background: transparent;
   font-weight: 700;
 }
@@ -475,7 +475,7 @@ select {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(46, 38, 32, 0.45);
+  background: rgba(27, 42, 53, 0.45);
   display: flex;
   align-items: flex-end;
   justify-content: center;
