@@ -104,7 +104,7 @@ export function Upload() {
 
       {files.length > 0 && (
         <section className="section">
-          <h2 className="day" style={{ fontSize: 19 }}>
+          <h2 className="section-title">
             {files.length} selected
           </h2>
           <ul className="file-list">

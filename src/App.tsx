@@ -55,10 +55,10 @@ function MembershipGate({ onSignOut, demo }: { onSignOut?: () => void; demo?: bo
       </div>
     );
   }
-  return <Shell onSignOut={onSignOut} demo={demo} />;
+  return <Shell name={me.data.name} onSignOut={onSignOut} demo={demo} />;
 }
 
-function Shell({ onSignOut, demo }: { onSignOut?: () => void; demo?: boolean }) {
+function Shell({ name, onSignOut, demo }: { name: string; onSignOut?: () => void; demo?: boolean }) {
   const route = useRoute();
   return (
     <div className="app">
@@ -70,11 +70,11 @@ function Shell({ onSignOut, demo }: { onSignOut?: () => void; demo?: boolean }) 
         )}
       </Navigation>
       {demo && (
-        <p className="notice" style={{ maxWidth: 1200, margin: '12px auto 0', width: 'calc(100% - 40px)' }}>
+        <p className="notice demo-notice">
           Preview with sample photos. Nothing is saved. Deploy with Amplify to use the real Archive.
         </p>
       )}
-      {route.name === 'timeline' && <Timeline />}
+      {route.name === 'timeline' && <Timeline name={name} />}
       {route.name === 'item' && <Viewer id={route.id} />}
       {route.name === 'search' && <Search tags={route.tags} />}
       {route.name === 'upload' && <Upload />}

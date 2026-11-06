@@ -145,7 +145,7 @@ The interface follows the chosen **Warm keepsake** direction: phone-first, cream
 
 - **Mockups:** a private claude.ai canvas (link in Further Notes), row A.
 - **Palette:** cream ground, dark warm ink, terracotta accent with a sage alternative, muted text that passes 4.5:1 contrast.
-- **Type:** Fraunces for headings, Atkinson Hyperlegible for body text. Body text is at least 17px and the smallest text 15px.
+- **Type:** Instrument Serif for headings, Atkinson Hyperlegible Next for body text. Body text is at least 17px and the smallest text 15px.
 - **Thumbnails:** square images in white print borders with a soft shadow. Videos carry a play badge with their duration.
 - **Navigation:** a bottom tab bar with labels: Timeline, Albums, Search, Upload. Tap targets are at least 44px.
 - **Timeline screen:** the title, then a slim Undated banner with a count, then year, month (with count) and day (with count) headings over a 3-column grid of prints.

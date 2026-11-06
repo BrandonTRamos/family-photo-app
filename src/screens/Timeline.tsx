@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { TimelineDto, TimelineMonthDto } from '../../core/api-types';
+import type { ItemDetailDto, TimelineDto, TimelineMonthDto } from '../../core/api-types';
 import { ErrorNotice, Grid, Loading, useApi } from '../components';
-import { dayHeading, items, monthName } from '../format';
-import { ChevronIcon } from '../icons';
+import { dayHeading, duration, greeting, items, longDate, monthName } from '../format';
+import { ChevronIcon, PlayIcon } from '../icons';
 import { takeFlash } from '../flash';
 import { href } from '../router';
 
@@ -24,7 +24,7 @@ function merge(into: TimelineMonthDto[], more: TimelineMonthDto[]): TimelineMont
   return out;
 }
 
-export function Timeline() {
+export function Timeline({ name }: { name?: string }) {
   const api = useApi();
   const [page, setPage] = useState<TimelineDto>();
   const [months, setMonths] = useState<TimelineMonthDto[]>([]);
@@ -76,10 +76,12 @@ export function Timeline() {
 
   return (
     <main className="page">
-      <header>
+      <header className="welcome">
+        <p className="greeting">{greeting(name)}</p>
         <h1 className="page-title">Family Archive</h1>
-        <p className="subtitle">Everyone's photos and videos, newest first</p>
       </header>
+
+      {jumpedTo === undefined && months[0] && <Latest id={months[0].days[0].items[0].id} />}
 
       {flash && (
         <div className="notice row" role="status" style={{ justifyContent: 'space-between' }}>
@@ -90,18 +92,6 @@ export function Timeline() {
             Undo
           </button>
         </div>
-      )}
-
-      {page && page.undatedCount > 0 && (
-        <a className="banner" href={href({ name: 'undated' })}>
-          <span>
-            <strong>Undated</strong> · {page.undatedCount} need{page.undatedCount === 1 ? 's' : ''} a date
-          </span>
-          <span className="go">
-            See
-            <ChevronIcon />
-          </span>
-        </a>
       )}
 
       {error && <ErrorNotice message={error} retry={() => load({ replace: true, year: jumpedTo })} />}
@@ -159,9 +149,49 @@ export function Timeline() {
         </div>
       </form>
 
-      <p style={{ margin: 0 }}>
-        <a href={href({ name: 'deleted' })}>Recently deleted</a>
-      </p>
+      <nav className="more-links" aria-label="More">
+        <a href={href({ name: 'undated' })}>
+          Photos without a date
+          <ChevronIcon />
+        </a>
+        <a href={href({ name: 'deleted' })}>
+          Recently deleted
+          <ChevronIcon />
+        </a>
+      </nav>
     </main>
+  );
+}
+
+/** The newest photo or video, shown large as a print. */
+function Latest({ id }: { id: string }) {
+  const api = useApi();
+  const [item, setItem] = useState<ItemDetailDto>();
+  useEffect(() => {
+    let live = true;
+    api.item(id).then((it) => live && setItem(it), () => undefined); // decoration only: skip it on error
+    return () => {
+      live = false;
+    };
+  }, [api, id]);
+  const src = item && (item.kind === 'video' ? item.posterUrl ?? item.thumbUrl : item.displayUrl ?? item.thumbUrl);
+  if (!item || !src) return <div className="hero-print placeholder" aria-hidden="true" />;
+  return (
+    <a className="hero-print" href={href({ name: 'item', id: item.id })}>
+      <span className="hero-photo">
+        <img src={src} alt="" />
+        {item.kind === 'video' && (
+          <span className="badge">
+            <PlayIcon />
+            {duration(item.durationMs)}
+          </span>
+        )}
+      </span>
+      <span className="hero-caption">
+        <span className="eyebrow">Latest</span>
+        {item.capture && <span className="hero-date">{longDate(item.capture.date)}</span>}
+        <span className="muted">Added by {item.addedBy}</span>
+      </span>
+    </a>
   );
 }

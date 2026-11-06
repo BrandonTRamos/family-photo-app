@@ -12,7 +12,7 @@ import { readFileDate } from './file-date';
 
 const API = 'https://api.demo.invalid';
 const STORAGE = 'https://storage.demo.invalid/';
-const you: Caller = { sub: 'demo-you', name: 'You', groups: ['family'] };
+const you: Caller = { sub: 'demo-you', name: 'Sam', groups: ['family'] };
 const rosa: Person = { id: 'demo-rosa', name: 'Aunt Rosa' };
 const dan: Person = { id: 'demo-dan', name: 'Uncle Dan' };
 

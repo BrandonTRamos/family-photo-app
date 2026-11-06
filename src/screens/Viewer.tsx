@@ -137,7 +137,7 @@ export function Viewer({ id }: { id: string }) {
 
       {item.status === 'ready' && (
         <section className="section">
-          <h2 className="day" style={{ fontSize: 19 }}>
+          <h2 className="section-title">
             What's in this {item.kind}
           </h2>
           <div className="chips">

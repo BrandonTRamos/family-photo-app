@@ -50,3 +50,15 @@ export function durationWords(ms: number | undefined): string {
 export function items(n: number): string {
   return `${n} item${n === 1 ? '' : 's'}`;
 }
+
+export function longDate(date: string): string {
+  return utc(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** "Good evening, Rosa": by the viewer's local time, with their first name when we know it. */
+export function greeting(name: string | undefined, now = new Date()): string {
+  const h = now.getHours();
+  const part = h < 5 ? 'evening' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+  const first = name && name !== 'Family member' ? name.split('@')[0].trim().split(/\s+/)[0] : '';
+  return first ? `Good ${part}, ${first}` : `Good ${part}`;
+}
