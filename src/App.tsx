@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ApiContext, ErrorNotice, Loading, Navigation, useApi, useLoad } from './components';
 import type { ApiClient } from './api';
 import { useRoute } from './router';
+import { appReady } from './splash';
 import { AlbumDetail, Albums } from './screens/Albums';
 import { Search } from './screens/Search';
 import { Timeline } from './screens/Timeline';
@@ -22,6 +23,10 @@ export function App({ api, onSignOut, demo }: { api: ApiClient; onSignOut?: () =
 function MembershipGate({ onSignOut, demo }: { onSignOut?: () => void; demo?: boolean }) {
   const api = useApi();
   const me = useLoad(() => api.me(), []);
+  const settled = !!(me.data || me.error);
+  useEffect(() => {
+    if (settled) appReady();
+  }, [settled]);
   if (me.error) {
     return (
       <div className="center">

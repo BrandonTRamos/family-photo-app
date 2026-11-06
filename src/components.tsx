@@ -40,12 +40,20 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]): {
 }
 
 export function Print({ item }: { item: ItemSummaryDto }) {
+  const [loaded, setLoaded] = useState(false);
   const when = item.capture ? shortDate(item.capture.date) : 'no date';
   const label =
     item.kind === 'video' ? `Video, ${durationWords(item.durationMs)}, ${when}` : `Photo, ${when}`;
   return (
     <a className="print" href={href({ name: 'item', id: item.id })} aria-label={label}>
-      <img src={item.thumbUrl} alt="" loading="lazy" />
+      <img
+        src={item.thumbUrl}
+        alt=""
+        loading="lazy"
+        className={loaded ? 'loaded' : 'shimmer'}
+        ref={(img) => img?.complete && img.naturalWidth > 0 && !loaded && setLoaded(true)}
+        onLoad={() => setLoaded(true)}
+      />
       {item.kind === 'video' && (
         <span className="badge">
           <PlayIcon />
@@ -66,8 +74,26 @@ export function Grid({ items }: { items: ItemSummaryDto[] }) {
   );
 }
 
-export function Loading() {
-  return <p className="muted">Loading…</p>;
+/** Empty prints with a light sweeping across them, where the photos will appear. */
+export function Loading({ variant = 'grid' }: { variant?: 'grid' | 'photo' }) {
+  return (
+    <div className="skeleton" role="status">
+      <span className="visually-hidden">Loading…</span>
+      {variant === 'photo' ? (
+        <div className="ghost-print large" aria-hidden="true">
+          <span className="shimmer" />
+        </div>
+      ) : (
+        <div className="grid" aria-hidden="true">
+          {Array.from({ length: 9 }, (_, i) => (
+            <div key={i} className="ghost-print" style={{ animationDelay: `${i * 40}ms` }}>
+              <span className="shimmer" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ErrorNotice({ message, retry }: { message: string; retry?: () => void }) {

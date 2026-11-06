@@ -175,7 +175,13 @@ function Latest({ id }: { id: string }) {
     };
   }, [api, id]);
   const src = item && (item.kind === 'video' ? item.posterUrl ?? item.thumbUrl : item.displayUrl ?? item.thumbUrl);
-  if (!item || !src) return <div className="hero-print placeholder" aria-hidden="true" />;
+  if (!item || !src) {
+    return (
+      <div className="hero-print placeholder" aria-hidden="true">
+        <span className="shimmer" />
+      </div>
+    );
+  }
   return (
     <a className="hero-print" href={href({ name: 'item', id: item.id })}>
       <span className="hero-photo">

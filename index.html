@@ -15,8 +15,129 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Instrument+Serif:ital@0;1&display=swap"
     />
+    <style>
+      /* Opening splash: a Polaroid develops while the app starts. Shown before any script runs. */
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: #f1f5f7;
+        transition: opacity 0.45s ease;
+      }
+      #splash.out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #splash .polaroid {
+        width: 172px;
+        padding: 11px 11px 38px;
+        background: #fff;
+        border-radius: 3px;
+        box-shadow: 0 2px 4px rgba(27, 42, 53, 0.08), 0 16px 40px rgba(27, 42, 53, 0.18);
+        transform: rotate(-3deg);
+        animation: splash-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      }
+      #splash .photo {
+        position: relative;
+        aspect-ratio: 1;
+        overflow: hidden;
+        background: #1f2b33;
+      }
+      #splash .photo svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        animation: splash-develop 2.8s ease-in-out infinite;
+      }
+      #splash .photo::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: #1f2b33;
+        animation: splash-veil 2.8s ease-in-out infinite;
+      }
+      #splash p {
+        margin: 0;
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-style: italic;
+        font-size: 24px;
+        color: #536572;
+        animation: splash-in 0.9s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      }
+      @keyframes splash-in {
+        from {
+          opacity: 0;
+          transform: translateY(10px) rotate(-3deg);
+        }
+      }
+      @keyframes splash-veil {
+        0% { opacity: 0.96; }
+        55% { opacity: 0; }
+        85% { opacity: 0; }
+        100% { opacity: 0.96; }
+      }
+      @keyframes splash-develop {
+        0% { filter: saturate(0) blur(3px); }
+        55% { filter: saturate(1) blur(0); }
+        85% { filter: saturate(1) blur(0); }
+        100% { filter: saturate(0) blur(3px); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash *,
+        #splash .photo::after {
+          animation: none !important;
+        }
+        #splash .photo::after {
+          opacity: 0;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <div class="polaroid">
+        <div class="photo">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="splash-sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#bfe0ee" />
+                <stop offset="1" stop-color="#f3d9b8" />
+              </linearGradient>
+            </defs>
+            <rect width="100" height="100" fill="url(#splash-sky)" />
+            <circle cx="66" cy="40" r="9" fill="#fff6e6" />
+            <path d="M0 64 L24 38 L40 54 L58 32 L84 58 L100 46 L100 70 L0 70 Z" fill="#6f8fa3" />
+            <path d="M0 66 L18 52 L34 62 L52 48 L72 64 L100 56 L100 72 L0 72 Z" fill="#4f7388" />
+            <rect y="70" width="100" height="30" fill="#4f86a3" />
+            <rect x="8" y="76" width="40" height="2" rx="1" fill="#bfe0ee" opacity=".6" />
+            <rect x="56" y="86" width="30" height="2" rx="1" fill="#bfe0ee" opacity=".5" />
+            <path d="M62 70 h26 v3 h-26 z M66 73 v7 M84 73 v7" stroke="#5b4636" stroke-width="2" fill="#7a5c45" />
+          </svg>
+        </div>
+      </div>
+      <p>Family Archive</p>
+    </div>
+    <script>
+      // Fade the splash out once the app says it is ready, after at least one develop, or after 12s regardless.
+      (function () {
+        var start = Date.now();
+        function hide() {
+          var s = document.getElementById('splash');
+          if (!s || s.classList.contains('out')) return;
+          s.classList.add('out');
+          setTimeout(function () { s.remove(); }, 500);
+        }
+        window.addEventListener('app-ready', function () {
+          setTimeout(hide, Math.max(0, 1500 - (Date.now() - start)));
+        });
+        setTimeout(hide, 12000);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

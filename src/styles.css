@@ -118,9 +118,6 @@ select {
   color: var(--ink);
   transform: translateY(-2px);
 }
-.hero-print.placeholder {
-  aspect-ratio: 4 / 3.7;
-}
 .hero-photo {
   position: relative;
   display: block;
@@ -818,4 +815,72 @@ select {
   font-weight: 400;
   font-size: 26px;
   line-height: 1.1;
+}
+
+/* ---- loading: empty prints with a soft light sweeping across ---- */
+.shimmer {
+  background: linear-gradient(100deg, var(--paper-deep) 35%, #f4f8fa 50%, var(--paper-deep) 65%);
+  background-size: 300% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ghost-print {
+  padding: 5px 5px 18px;
+  background: var(--print);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+  animation: ghost-in 0.5s var(--ease) both;
+}
+.ghost-print .shimmer {
+  display: block;
+  aspect-ratio: 1;
+}
+.ghost-print.large {
+  max-width: 900px;
+  padding: 10px 10px 30px;
+}
+.ghost-print.large .shimmer {
+  aspect-ratio: 4 / 3;
+}
+.hero-print.placeholder {
+  aspect-ratio: auto;
+  padding-bottom: 96px;
+}
+.hero-print.placeholder .shimmer {
+  display: block;
+  aspect-ratio: 4 / 3;
+}
+@keyframes ghost-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+/* A photo fades in over its frame once it arrives. */
+.print img.loaded {
+  animation: photo-in 0.45s var(--ease);
+}
+@keyframes photo-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .ghost-print,
+  .print img.loaded {
+    animation: none;
+  }
 }

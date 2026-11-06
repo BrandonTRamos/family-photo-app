@@ -50,7 +50,7 @@ export function Viewer({ id }: { id: string }) {
   );
 
   if (error) return <main className="page">{back}<ErrorNotice message={error} retry={reload} /></main>;
-  if (!item) return <main className="page">{back}<Loading /></main>;
+  if (!item) return <main className="page">{back}<Loading variant="photo" /></main>;
 
   return (
     <main className="page">
