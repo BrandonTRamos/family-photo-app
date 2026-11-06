@@ -25,6 +25,7 @@ npm run dev       # web app; demo mode until amplify_outputs.json exists
 3. After the first deploy:
    - Bedrock: make sure Amazon Nova Lite is available to the account in the deploy region (the tagger calls the `us.amazon.nova-lite-v1:0` inference profile; change `BEDROCK_MODEL_ID` in `amplify/archive-resources.ts` for other regions).
    - Membership: people sign up in the app, then an admin adds them to the `family` group in the Cognito console. Until then the app asks them to wait.
+   - Sign-ins last a year and renew once a day, so removing someone from the group takes effect within a day.
 
 ## Defaults chosen (change as needed)
 
