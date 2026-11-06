@@ -143,8 +143,10 @@ export function Viewer({ id }: { id: string }) {
           <div className="chips">
             {item.tags.map((t) => (
               <span key={t.key} className="chip">
-                {t.source === 'ai' && <SparkleIcon label="Added automatically" />}
-                {t.label}
+                <a className="chip-link" href={href({ name: 'search', tags: [t.label] })} aria-label={`See everything tagged ${t.label}`}>
+                  {t.source === 'ai' && <SparkleIcon label="Added automatically" />}
+                  {t.label}
+                </a>
                 <button
                   type="button"
                   className="remove"
