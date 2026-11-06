@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { Duration, Names, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { CustomResource, Duration, Names, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -9,6 +9,9 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as cr from 'aws-cdk-lib/custom-resources';
 import { NodejsFunction, OutputFormat, type NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { CorsHttpMethod, HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
@@ -120,11 +123,55 @@ export class ArchiveResources extends Construct {
       targets: [new targets.SqsQueue(processingQueue)],
     });
 
+    // ---- photo and video delivery ----
+    // CloudFront serves media from a location near each viewer. Only links signed with our key are accepted;
+    // the private key is created at deploy and kept as an encrypted SSM parameter.
+    const keyParameterName = `/${appTag}/media-cdn-signing-key`;
+    const keyParameterArn = stack.formatArn({ service: 'ssm', resource: 'parameter', resourceName: keyParameterName.slice(1) });
+    const keyFn = new NodejsFunction(this, 'CdnKeyFn', {
+      entry: fileURLToPath(new URL('./functions/cdn-key.ts', import.meta.url)),
+      depsLockFilePath: fileURLToPath(new URL('../package-lock.json', import.meta.url)),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      timeout: Duration.seconds(30),
+      logGroup: new logs.LogGroup(this, 'CdnKeyFnLogs', { retention: logs.RetentionDays.ONE_MONTH }),
+      bundling: { format: OutputFormat.ESM, target: 'node22', externalModules: ['@aws-sdk/*'] },
+    });
+    keyFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter', 'ssm:PutParameter', 'ssm:DeleteParameter'],
+        resources: [keyParameterArn],
+      }),
+    );
+    const signingKey = new CustomResource(this, 'CdnSigningKey', {
+      serviceToken: new cr.Provider(this, 'CdnKeyProvider', {
+        onEventHandler: keyFn,
+        logGroup: new logs.LogGroup(this, 'CdnKeyProviderLogs', { retention: logs.RetentionDays.ONE_MONTH }),
+      }).serviceToken,
+      properties: { ParameterName: keyParameterName },
+    });
+    const publicKey = new cloudfront.PublicKey(this, 'CdnPublicKey', {
+      encodedKey: signingKey.getAttString('PublicKey'),
+      comment: 'Family Archive media links',
+    });
+    const cdn = new cloudfront.Distribution(this, 'MediaCdn', {
+      comment: 'Family Archive photos and videos',
+      httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(media),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        trustedKeyGroups: [new cloudfront.KeyGroup(this, 'CdnKeyGroup', { items: [publicKey] })],
+      },
+    });
+
     // ---- functions ----
     const environment = {
       TABLE_NAME: table.tableName,
       STAGING_BUCKET: staging.bucketName,
       MEDIA_BUCKET: media.bucketName,
+      MEDIA_CDN_DOMAIN: cdn.distributionDomainName,
+      MEDIA_CDN_KEY_ID: publicKey.publicKeyId,
+      MEDIA_CDN_KEY_PARAMETER: keyParameterName,
       PROCESSING_QUEUE_URL: processingQueue.queueUrl,
       TAGGING_QUEUE_URL: taggingQueue.queueUrl,
       MEDIACONVERT_ROLE_ARN: mediaConvertRole.roleArn,
@@ -164,6 +211,7 @@ export class ArchiveResources extends Construct {
     api.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:AbortMultipartUpload'], resources: [staging.arnForObjects('*')] }));
     media.grantRead(api);
     media.grantDelete(api); // "Delete now" in Recently deleted
+    api.addToRolePolicy(new iam.PolicyStatement({ actions: ['ssm:GetParameter'], resources: [keyParameterArn] }));
     processingQueue.grantSendMessages(api);
 
     table.grantReadWriteData(processor);

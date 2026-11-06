@@ -32,13 +32,12 @@ npm run dev       # web app; demo mode until amplify_outputs.json exists
 - Uploads: JPEG, PNG, WebP, HEIC/HEIF photos up to 50 MB; MP4/MOV videos up to 2 GB. Large files upload in 16 MB parts.
 - Staging originals are deleted after a verified publish; failed or abandoned ones expire after 30 days.
 - Photos: 2048 px display JPEG and 400 px square thumbnail, all metadata (including GPS) stripped.
-- Videos: H.264/AAC MP4 at 30 fps, 8 Mbps cap, plus a poster frame.
-- Media is served with 1-hour presigned S3 links.
+- Videos: H.264/AAC MP4 at 30 fps, at most 1080p, 8 Mbps cap, plus a poster frame.
+- Media is served through CloudFront with signed links (canned policy, valid 1–2 hours, stable within each hour so phones reuse cached files). The signing key pair is created at deploy by a custom resource; the private key lives in an SSM SecureString parameter, the public key in a CloudFront key group. Without the CDN settings (tests, local) links fall back to presigned S3.
 
 ## Known gaps
 
 - HEIC: the prebuilt sharp has no HEVC decoder, so HEIC photos currently fail processing (the original is kept). Needs a libheif-capable sharp build or layer.
-- Video resolution is left at the source (frame rate is fixed at 30 fps); add a 1080p cap once tested against real MediaConvert output. Silent and variable-frame-rate video are untested against real MediaConvert.
-- Media links are presigned S3, not signed CloudFront (CloudFront needs a key pair you create).
+- Silent and variable-frame-rate video are untested against real MediaConvert.
 - A video whose MediaConvert completion event is lost stays "processing" until its ingest message is redelivered; there is no sweeper yet.
-- Search matches exact tags; no stemming or semantic search.
+- Search matches the start of any word in a tag; no stemming or semantic search.

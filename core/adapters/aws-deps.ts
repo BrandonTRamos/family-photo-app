@@ -4,17 +4,39 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { SQSClient } from '@aws-sdk/client-sqs';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { MediaConvertClient } from '@aws-sdk/client-mediaconvert';
+import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { randomUUID } from 'node:crypto';
 import { defaultConfig, type Deps, type ImageProcessor } from '../ports.js';
 import { FileMetadataReader } from '../media/metadata.js';
 import { DynamoRepository } from './dynamo-repository.js';
 import { BedrockTagger, S3BlobStore, SqsQueue } from './aws.js';
 import { MediaConvertTranscoder } from './mediaconvert.js';
+import { S3CloudFrontBlobStore } from './cloudfront.js';
 
 function env(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing environment variable ${name}`);
   return value;
+}
+
+/** Links to photos and videos go through CloudFront when it is set up; otherwise straight to S3. */
+function mediaStore(s3: S3Client) {
+  const domain = process.env.MEDIA_CDN_DOMAIN;
+  const keyPairId = process.env.MEDIA_CDN_KEY_ID;
+  const keyParameter = process.env.MEDIA_CDN_KEY_PARAMETER;
+  if (!domain || !keyPairId || !keyParameter) return new S3BlobStore(s3, env('MEDIA_BUCKET'));
+  let privateKey: Promise<string> | undefined;
+  const loadKey = async () => {
+    const res = await new SSMClient({}).send(new GetParameterCommand({ Name: keyParameter, WithDecryption: true }));
+    if (!res.Parameter?.Value) throw new Error(`Signing key ${keyParameter} is empty`);
+    return res.Parameter.Value;
+  };
+  return new S3CloudFrontBlobStore(s3, env('MEDIA_BUCKET'), {
+    domain,
+    keyPairId,
+    // Read once per warm function; a failed read is retried on the next request.
+    privateKey: () => (privateKey ??= loadKey().catch((e) => ((privateKey = undefined), Promise.reject(e)))),
+  });
 }
 
 /** Image processing needs sharp's native binary, so only the workers that use it pass one in. */
@@ -31,7 +53,7 @@ export function depsFromEnv(images?: ImageProcessor): Deps {
       env('TABLE_NAME'),
     ),
     staging: new S3BlobStore(s3, env('STAGING_BUCKET')),
-    media: new S3BlobStore(s3, env('MEDIA_BUCKET')),
+    media: mediaStore(s3),
     processingQueue: new SqsQueue(sqs, env('PROCESSING_QUEUE_URL')),
     taggingQueue: new SqsQueue(sqs, env('TAGGING_QUEUE_URL')),
     tagger: new BedrockTagger(new BedrockRuntimeClient({}), process.env.BEDROCK_MODEL_ID ?? 'us.amazon.nova-lite-v1:0'),
