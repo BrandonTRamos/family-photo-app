@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Home Screen Icons</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" />
+<style>
+  :root { --paper:#f6efe3; --print:#fffdf8; --ink:#2e2620; --muted:#6b5d50; --rule:#dccfbb; --accent:#a4502f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:'Atkinson Hyperlegible',system-ui,sans-serif; font-size:17px; line-height:1.4; }
+  main { max-width:760px; margin:0 auto; padding:24px 16px 48px; }
+  h1, h2 { font-family:'Fraunces',Georgia,serif; font-weight:600; margin:0 0 6px; }
+  h1 { font-size:30px; }
+  h2 { font-size:21px; margin-top:32px; }
+  p { margin:0 0 16px; color:var(--muted); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:20px; }
+  .card { background:var(--print); border:1px solid var(--rule); border-radius:14px; padding:16px; text-align:center; }
+  .icon { width:112px; height:112px; border-radius:25px; overflow:hidden; margin:0 auto 10px; box-shadow:0 2px 6px rgba(46,38,32,.25); }
+  .icon svg { display:block; width:100%; height:100%; }
+  .card strong { display:block; font-size:18px; }
+  .card span { font-size:15px; color:var(--muted); }
+  .phone { margin:0 auto; width:min(340px,100%); border-radius:40px; padding:44px 22px 30px; background:linear-gradient(160deg,#5b7a8c,#2f4250 60%,#1f2b33); box-shadow:0 6px 20px rgba(0,0,0,.25); }
+  .phone.light { background:linear-gradient(160deg,#e8d9c4,#c9b59b 60%,#a99272); }
+  .home { display:grid; grid-template-columns:repeat(4,1fr); gap:20px 12px; }
+  .app { text-align:center; color:#fff; font-size:12px; text-shadow:0 1px 2px rgba(0,0,0,.4); }
+  .app .tile { width:60px; height:60px; border-radius:14px; overflow:hidden; margin:0 auto 5px; background:rgba(255,255,255,.28); }
+  .app .tile svg { display:block; width:100%; height:100%; }
+  .phones { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Home screen icon ideas</h1>
+  <p>Six ideas in the app's warm colours. Pick one, or mix two.</p>
+  <div class="grid" id="cards"></div>
+
+  <h2>On a phone</h2>
+  <p>The same icons at real size, on a dark wallpaper and a light one.</p>
+  <div class="phones">
+    <div class="phone"><div class="home" id="home-dark"></div></div>
+    <div class="phone light"><div class="home" id="home-light"></div></div>
+  </div>
+</main>
+
+<script>
+const T = '#a4502f', TD = '#7e3a20', CREAM = '#f6efe3', DEEP = '#efe4d2', WHITE = '#fffdf8', INK = '#2e2620';
+const sky = (id) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3c98f"/><stop offset="1" stop-color="#e59a6a"/></linearGradient>`;
+
+const icons = [
+  { n: 'A', name: 'Stacked prints', note: 'Two photos, one on top', svg: (u) => `
+    <defs>${sky('s' + u)}</defs>
+    <rect width="100" height="100" fill="${T}"/>
+    <g transform="rotate(-10 50 52)"><rect x="27" y="22" width="46" height="56" rx="2" fill="${DEEP}"/><rect x="31" y="26" width="38" height="38" fill="#c9b59b"/></g>
+    <g transform="rotate(7 50 50)">
+      <rect x="25" y="20" width="50" height="60" rx="2" fill="${WHITE}"/>
+      <rect x="30" y="25" width="40" height="40" fill="url(#s${u})"/>
+      <circle cx="58" cy="37" r="6" fill="${WHITE}" opacity=".9"/>
+      <path d="M30 65 L30 55 Q40 46 50 54 Q58 49 70 56 L70 65 Z" fill="#7a6a3e"/>
+    </g>` },
+  { n: 'B', name: 'Serif F', note: 'Simple letter, like a book cover', svg: () => `
+    <rect width="100" height="100" fill="${CREAM}"/>
+    <rect x="9" y="9" width="82" height="82" rx="14" fill="none" stroke="${T}" stroke-width="2"/>
+    <text x="50" y="71" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="600" font-size="62" fill="${T}">F</text>` },
+  { n: 'C', name: 'Photo album', note: 'A keepsake book with a heart', svg: () => `
+    <rect width="100" height="100" fill="${CREAM}"/>
+    <rect x="26" y="20" width="52" height="62" rx="4" fill="${TD}"/>
+    <rect x="22" y="18" width="52" height="62" rx="4" fill="${T}"/>
+    <rect x="22" y="18" width="8" height="62" rx="3" fill="${TD}"/>
+    <rect x="36" y="32" width="30" height="34" rx="2" fill="none" stroke="${CREAM}" stroke-width="2"/>
+    <path d="M51 56 C43 50 42 44 46 42 C48.5 40.8 50.5 42 51 44 C51.5 42 53.5 40.8 56 42 C60 44 59 50 51 56 Z" fill="${CREAM}"/>` },
+  { n: 'D', name: 'Home in a print', note: 'The family house, as a photo', svg: () => `
+    <rect width="100" height="100" fill="${T}"/>
+    <g transform="rotate(-6 50 50)">
+      <rect x="22" y="18" width="56" height="66" rx="2" fill="${WHITE}"/>
+      <rect x="28" y="24" width="44" height="44" fill="${DEEP}"/>
+      <path d="M36 50 L50 37 L64 50 L64 64 L36 64 Z" fill="${T}"/>
+      <rect x="46" y="54" width="8" height="10" fill="${WHITE}"/>
+      <path d="M33 51 L50 34.5 L67 51" fill="none" stroke="${TD}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>` },
+  { n: 'E', name: 'Family', note: 'Three people under an arch', svg: () => `
+    <rect width="100" height="100" fill="${CREAM}"/>
+    <path d="M20 84 L20 46 A30 30 0 0 1 80 46 L80 84 Z" fill="${DEEP}"/>
+    <circle cx="38" cy="45" r="7" fill="${T}"/><path d="M27 84 L27 66 A11 11 0 0 1 49 66 L49 84 Z" fill="${T}"/>
+    <circle cx="62" cy="45" r="7" fill="${TD}"/><path d="M51 84 L51 66 A11 11 0 0 1 73 66 L73 84 Z" fill="${TD}"/>
+    <circle cx="50" cy="61" r="5.5" fill="${INK}"/><path d="M42 84 L42 76 A8 8 0 0 1 58 76 L58 84 Z" fill="${INK}"/>` },
+  { n: 'F', name: 'Sunset print', note: 'One photo, full of warm light', svg: (u) => `
+    <defs>${sky('k' + u)}</defs>
+    <rect width="100" height="100" fill="${WHITE}"/>
+    <rect x="12" y="12" width="76" height="62" rx="3" fill="url(#k${u})"/>
+    <circle cx="50" cy="52" r="13" fill="${WHITE}" opacity=".85"/>
+    <path d="M12 74 L12 58 Q30 46 46 58 Q62 48 88 60 L88 74 Z" fill="${T}"/>
+    <path d="M12 74 L12 66 Q34 58 56 67 Q72 62 88 68 L88 74 Z" fill="${TD}"/>
+    <rect x="34" y="82" width="32" height="3" rx="1.5" fill="${DEEP}"/>` },
+];
+
+const svg = (i, u) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Icon ${i.n}: ${i.name}">${i.svg(u)}</svg>`;
+document.getElementById('cards').innerHTML = icons.map((i) =>
+  `<div class="card"><div class="icon">${svg(i, 'c' + i.n)}</div><strong>${i.n} · ${i.name}</strong><span>${i.note}</span></div>`).join('');
+for (const which of ['dark', 'light']) {
+  const blank = () => `<div class="app"><div class="tile"></div>&nbsp;</div>`;
+  const ours = icons.map((i) => `<div class="app"><div class="tile">${svg(i, which + i.n)}</div>${i.n} · Family</div>`);
+  document.getElementById('home-' + which).innerHTML = [blank(), ...ours.slice(0, 3), ...ours.slice(3), blank(), blank(), blank(), blank(), blank()].join('');
+}
+</script>
+</body>
+</html>
