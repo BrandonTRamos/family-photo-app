@@ -1,5 +1,6 @@
 /* Lake house: misty blue paper, elegant serif headings, photos as white-bordered prints. */
 :root {
+  --navbar-height: 52px;
   --paper: #f1f5f7;
   --paper-deep: #dde7ec;
   --paper-bar: #f7fafb;
@@ -32,6 +33,18 @@ body {
   line-height: 1.45;
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+/* Feels like an app: no text selection or callouts on controls and photos, only in text you type. */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 a {
@@ -65,16 +78,31 @@ select {
 /* ---- layout ---- */
 .app {
   min-height: 100vh;
-  padding-bottom: calc(var(--tab-height) + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--tab-height) + 24px + env(safe-area-inset-bottom));
 }
 
 .page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 28px 20px 40px;
+  padding: 0 20px 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  animation: page-in 0.28s var(--ease) backwards; /* no fill afterwards: it would trap sheets under the tab bar */
+}
+.page.push {
+  animation-name: page-push;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes page-push {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
 }
 
 .page-title {
@@ -182,45 +210,46 @@ select {
 }
 
 /* ---- navigation ---- */
+/* A floating glass capsule, like current iOS apps. */
 .tabbar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 12px;
+  right: 12px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
   z-index: 10;
+  max-width: 520px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 6px 4px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(247, 250, 251, 0.82);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
-  backdrop-filter: blur(18px) saturate(1.6);
-  box-shadow: 0 -1px 0 rgba(27, 42, 53, 0.06), 0 -8px 24px rgba(27, 42, 53, 0.05);
+  padding: 6px;
+  border-radius: 34px;
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  backdrop-filter: blur(22px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 2px rgba(27, 42, 53, 0.08), 0 10px 30px rgba(27, 42, 53, 0.16);
 }
 
 .tab {
-  min-height: 56px;
+  min-height: 58px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
+  border-radius: 28px;
   color: var(--muted);
   font-size: 15px;
+  font-weight: 600;
   text-decoration: none;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease), transform 0.15s var(--ease);
 }
-.tab svg {
-  width: 52px;
-  height: 30px;
-  padding: 3px 14px;
-  border-radius: 15px;
-  transition: background 0.25s var(--ease);
+.tab:active {
+  transform: scale(0.94);
 }
 .tab[aria-current='page'] {
   color: var(--accent);
-  font-weight: 700;
-}
-.tab[aria-current='page'] svg {
-  background: var(--paper-deep);
+  background: rgba(43, 106, 138, 0.12);
 }
 
 .topbar {
@@ -881,6 +910,489 @@ select {
   .shimmer,
   .ghost-print,
   .print img.loaded {
+    animation: none;
+  }
+}
+
+/* ---- app shell: navigation bar, round buttons, grouped lists, cards ---- */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  margin: 0 -20px;
+  padding: env(safe-area-inset-top) 12px 0;
+  height: calc(var(--navbar-height) + env(safe-area-inset-top));
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.navbar[data-scrolled] {
+  background: rgba(241, 245, 247, 0.78);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: 0 1px 0 rgba(27, 42, 53, 0.08);
+}
+.navbar-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.navbar-side.end {
+  justify-content: flex-end;
+}
+.navbar-title {
+  margin: 0;
+  max-width: 60vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.navbar[data-large]:not([data-scrolled]) .navbar-title {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.large-title {
+  margin-top: -6px;
+}
+.large-title .greeting,
+.large-title .eyebrow {
+  margin: 0 0 2px;
+}
+.large-title .greeting {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 23px;
+  color: var(--accent);
+}
+.large-title .page-title {
+  font-size: 44px;
+}
+.large-title + .subtitle {
+  margin-top: -12px;
+}
+
+.icon-button {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 22px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+.icon-button:active {
+  transform: scale(0.92);
+}
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 1px 2px rgba(27, 42, 53, 0.08), 0 4px 14px rgba(27, 42, 53, 0.1);
+}
+a.icon-button:hover {
+  color: var(--ink);
+}
+
+.button.secondary {
+  background: var(--paper-deep);
+  color: var(--accent);
+  box-shadow: none;
+}
+.button.secondary:hover {
+  background: #d3e0e6;
+  color: var(--accent-dark);
+}
+
+.card {
+  margin: 0;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--print);
+  box-shadow: 0 1px 2px rgba(27, 42, 53, 0.05);
+}
+.card.done {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.card.done .button {
+  margin-top: 6px;
+}
+
+/* iOS "inset grouped" list: rows on a rounded white card, hairlines between them. */
+.list-group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 20px;
+  background: var(--print);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(27, 42, 53, 0.05);
+}
+.list-row {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.list-row:active {
+  background: var(--paper-deep);
+}
+.list-row:hover {
+  color: var(--ink);
+}
+.list-row + .list-row,
+.list-group > li + li {
+  border-top: 1px solid var(--paper-deep);
+}
+.list-row svg {
+  flex: none;
+  color: #9fb3bf;
+}
+.list-row.inset {
+  margin: 8px -16px -16px;
+  border-top: 1px solid var(--paper-deep);
+}
+.list-group .file-row {
+  border: 0;
+  border-radius: 0;
+}
+
+.empty {
+  margin: 24px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  color: var(--muted);
+}
+.empty p {
+  margin: 0;
+}
+
+/* ---- Timeline ---- */
+.month-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.month-bar {
+  position: sticky;
+  top: calc(var(--navbar-height) + env(safe-area-inset-top));
+  z-index: 5;
+  margin: 0 -20px;
+  padding: 8px 20px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 400;
+  background: rgba(241, 245, 247, 0.86);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+.month-bar .month {
+  margin: 0;
+  font-size: 30px;
+}
+.month-year {
+  color: var(--muted);
+}
+.day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pill-button {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-size: 16px;
+  cursor: pointer;
+}
+.pill-button strong {
+  color: var(--accent);
+}
+
+/* A message floating above the tab bar, like an iOS toast. */
+.toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--tab-height) + 20px + env(safe-area-inset-bottom));
+  z-index: 11;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 10px 18px;
+  border-radius: 22px;
+  background: rgba(27, 42, 53, 0.92);
+  color: #fff;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(27, 42, 53, 0.25);
+  animation: toast-in 0.35s var(--ease) both;
+}
+.toast-action {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* ---- photo page ---- */
+.action-bar {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.action-icon {
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28px;
+  background: var(--print);
+  color: var(--accent);
+  box-shadow: 0 1px 2px rgba(27, 42, 53, 0.08), 0 4px 14px rgba(27, 42, 53, 0.08);
+  transition: transform 0.15s var(--ease);
+}
+.action:active .action-icon {
+  transform: scale(0.92);
+}
+.action.danger .action-icon {
+  color: var(--danger);
+}
+.card .full-date {
+  font-size: 30px;
+}
+.card .subtitle {
+  margin-top: 2px;
+}
+.card.section {
+  gap: 12px;
+}
+
+/* ---- Search ---- */
+.search-field {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 14px;
+  border-radius: 16px;
+  background: var(--paper-deep);
+  color: var(--muted);
+}
+.search-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 19px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.search-field input::-webkit-search-cancel-button {
+  display: none;
+}
+.search-field .clear {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: #9fb3bf;
+  cursor: pointer;
+}
+.search-form {
+  margin-top: -8px;
+}
+.scroll-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -20px;
+  padding: 0 20px 2px;
+  scrollbar-width: none;
+}
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+.scroll-row > * {
+  flex: none;
+}
+.result-count {
+  margin: 0;
+}
+
+/* ---- Albums ---- */
+.album-card {
+  border: 0;
+  padding: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.album-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 6px 6px 22px;
+  background: var(--print);
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s var(--ease);
+}
+.album-cover img,
+.album-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--paper-deep);
+}
+.album-card:active .album-cover {
+  transform: scale(0.97);
+}
+.album-card.new .album-cover {
+  padding: 0;
+  background: transparent;
+  border: 1.5px dashed #9fb3bf;
+  border-radius: 16px;
+  box-shadow: none;
+  color: var(--accent);
+}
+.album-card .muted {
+  font-size: 15px;
+}
+
+/* ---- Upload ---- */
+.sticky-action {
+  position: sticky;
+  bottom: calc(var(--tab-height) + 24px + env(safe-area-inset-bottom));
+  z-index: 5;
+}
+.sticky-action .button {
+  box-shadow: 0 10px 30px rgba(43, 106, 138, 0.35);
+}
+
+/* Sheets slide up, with a grabber like iOS. */
+.sheet {
+  animation: sheet-in 0.35s var(--ease) both;
+  border-radius: 28px 28px 0 0;
+  background: var(--paper);
+}
+.sheet-backdrop {
+  animation: fade-in 0.25s ease both;
+}
+.grabber {
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  margin: -12px 0 -2px;
+  border-radius: 3px;
+  background: var(--rule);
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Prints press in when tapped. */
+.print:active {
+  transform: scale(0.97);
+}
+
+@media (min-width: 900px) {
+  .navbar {
+    position: static;
+    margin: 0;
+    padding: 16px 0 0;
+    height: auto;
+    background: none !important;
+    box-shadow: none !important;
+  }
+  .navbar-title {
+    visibility: hidden;
+  }
+  .month-bar {
+    top: 0;
+  }
+  .toast {
+    bottom: 24px;
+  }
+  .sticky-action {
+    bottom: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .sheet,
+  .sheet-backdrop,
+  .toast {
     animation: none;
   }
 }

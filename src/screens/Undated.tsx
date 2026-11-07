@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import type { UndatedDto } from '../../core/api-types';
-import { ErrorNotice, Grid, Loading, useApi, useLoad } from '../components';
-import { BackIcon } from '../icons';
-import { href } from '../router';
+import { ErrorNotice, Grid, Loading, NavBar, useApi, useLoad } from '../components';
 
 export function Undated() {
   const api = useApi();
@@ -21,25 +19,15 @@ export function Undated() {
   }
 
   return (
-    <main className="page">
-      <div>
-        <a className="link-button" href={href({ name: 'timeline' })}>
-          <BackIcon />
-          Back to Timeline
-        </a>
-      </div>
-      <header>
-        <h1 className="page-title">Undated</h1>
-        <p className="subtitle">
-          These have no date yet. Open one and set its date if you know exactly when it was taken.
-        </p>
-      </header>
+    <main className="page push">
+      <NavBar title="Without a date" compactTitle="Undated" back={{ route: { name: 'timeline' }, label: 'Back to Timeline' }} />
+      <p className="subtitle">These have no date yet. Open one and set its date if you know exactly when it was taken.</p>
       {error && <ErrorNotice message={error} retry={reload} />}
       {!data && !error && <Loading />}
-      {data && data.count === 0 && <p className="notice">Everything has a date.</p>}
+      {data && data.count === 0 && <p className="empty">Everything has a date.</p>}
       {data && <Grid items={data.items} />}
       {data?.cursor && (
-        <button type="button" className="button outline block" disabled={busy} onClick={more}>
+        <button type="button" className="button secondary block" disabled={busy} onClick={more}>
           {busy ? 'Loading…' : 'Show more'}
         </button>
       )}

@@ -63,3 +63,44 @@ export const SparkleIcon = ({ label }: { label?: string }) => (
     <path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z" />
   </svg>
 );
+export const PlusIcon = ({ size = 22 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke} strokeWidth={2.2}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+export const MoreIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <circle cx="5" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="19" cy="12" r="2" />
+  </svg>
+);
+export const CalendarIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" {...stroke}>
+    <rect x="3" y="4" width="18" height="17" rx="3" />
+    <path d="M3 9h18M8 2v4M16 2v4M8 14h3" />
+  </svg>
+);
+export const ShareIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" {...stroke}>
+    <path d="M12 3v12M7 8l5-5 5 5" />
+    <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+  </svg>
+);
+export const TrashIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" {...stroke}>
+    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3" />
+  </svg>
+);
+export const AlbumAddIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" {...stroke}>
+    <rect x="3" y="7" width="14" height="14" rx="2" />
+    <path d="M7 3h12a2 2 0 0 1 2 2v12M10 11v6M7 14h6" />
+  </svg>
+);
+export const ClearIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" fill="currentColor" />
+    <path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="var(--print)" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);

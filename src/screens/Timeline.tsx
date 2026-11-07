@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { ItemDetailDto, TimelineDto, TimelineMonthDto } from '../../core/api-types';
-import { ErrorNotice, Grid, Loading, useApi } from '../components';
+import { ErrorNotice, Grid, IconButton, Loading, NavBar, Sheet, useApi } from '../components';
 import { dayHeading, duration, greeting, items, longDate, monthName } from '../format';
-import { ChevronIcon, PlayIcon } from '../icons';
+import { CalendarIcon, ChevronIcon, PlayIcon } from '../icons';
 import { takeFlash } from '../flash';
 import { href } from '../router';
 
@@ -71,24 +71,40 @@ export function Timeline({ name }: { name?: string }) {
     void load({ year: y, replace: true });
   }
 
-  const years = new Map<string, TimelineMonthDto[]>();
-  for (const m of months) years.set(m.month.slice(0, 4), [...(years.get(m.month.slice(0, 4)) ?? []), m]);
+  const [jumping, setJumping] = useState(false);
 
   return (
     <main className="page">
-      <header className="welcome">
-        <p className="greeting">{greeting(name)}</p>
-        <h1 className="page-title">Family Archive</h1>
-      </header>
+      <NavBar
+        title="Family Archive"
+        eyebrow={<p className="greeting">{greeting(name)}</p>}
+        actions={
+          <IconButton label="Jump to a year" onClick={() => setJumping(true)}>
+            <CalendarIcon />
+          </IconButton>
+        }
+      />
 
       {jumpedTo === undefined && months[0] && <Latest id={months[0].days[0].items[0].id} />}
 
+      {jumpedTo !== undefined && (
+        <button
+          type="button"
+          className="pill-button"
+          onClick={() => {
+            setJumpedTo(undefined);
+            setYear('');
+            void load({ replace: true });
+          }}
+        >
+          From {jumpedTo} and earlier · <strong>Back to newest</strong>
+        </button>
+      )}
+
       {flash && (
-        <div className="notice row" role="status" style={{ justifyContent: 'space-between' }}>
-          <span>
-            {flash.deleted.kind === 'video' ? 'Video' : 'Photo'} moved to <a href={href({ name: 'deleted' })}>Recently deleted</a>.
-          </span>
-          <button type="button" className="button small outline" onClick={() => undoDelete(flash.deleted.id)}>
+        <div className="toast" role="status">
+          <span>{flash.deleted.kind === 'video' ? 'Video' : 'Photo'} moved to Recently deleted</span>
+          <button type="button" className="toast-action" onClick={() => undoDelete(flash.deleted.id)}>
             Undo
           </button>
         </div>
@@ -97,68 +113,78 @@ export function Timeline({ name }: { name?: string }) {
       {error && <ErrorNotice message={error} retry={() => load({ replace: true, year: jumpedTo })} />}
       {!page && !error && <Loading />}
       {page && months.length === 0 && !busy && (
-        <p className="notice">
-          Nothing on the Timeline yet. <a href={href({ name: 'upload' })}>Add the first photos</a>.
-        </p>
+        <div className="empty">
+          <p>Nothing on the Timeline yet.</p>
+          <a className="button" href={href({ name: 'upload' })}>
+            Add the first photos
+          </a>
+        </div>
       )}
 
-      {[...years.entries()].map(([y, ms]) => (
-        <section key={y} className="section" aria-labelledby={`y${y}`}>
-          <h2 className="year" id={`y${y}`}>
-            {y}
+      {months.map((m) => (
+        <section key={m.month} className="month-section" aria-label={`${monthName(m.month)} ${m.month.slice(0, 4)}`}>
+          <h2 className="month-bar">
+            <span className="month">
+              {monthName(m.month)} <span className="month-year">{m.month.slice(0, 4)}</span>
+            </span>
+            <span className="count">{items(m.count)}</span>
           </h2>
-          {ms.map((m) => (
-            <section key={m.month} className="section">
-              <h3 className="month">
-                {monthName(m.month)} <span className="count">· {items(m.count)}</span>
+          {m.days.map((d) => (
+            <div key={d.date} className="day-group">
+              <h3 className="day">
+                {dayHeading(d.date)} <span className="count">· {d.count}</span>
               </h3>
-              {m.days.map((d) => (
-                <div key={d.date} className="section" style={{ gap: 8 }}>
-                  <h4 className="day">
-                    {dayHeading(d.date)} <span className="count">· {d.count}</span>
-                  </h4>
-                  <Grid items={d.items} />
-                </div>
-              ))}
-            </section>
+              <Grid items={d.items} />
+            </div>
           ))}
         </section>
       ))}
 
       {page?.cursor && (
-        <button type="button" className="button outline block" disabled={busy} onClick={() => load({ cursor: page.cursor })}>
+        <button type="button" className="button secondary block" disabled={busy} onClick={() => load({ cursor: page.cursor })}>
           {busy ? 'Loading…' : 'Show older photos'}
         </button>
       )}
 
-      <form className="field" onSubmit={jump}>
-        <label htmlFor="jump-year">Jump to a year</label>
-        <div className="row">
-          <input
-            id="jump-year"
-            className="input"
-            inputMode="numeric"
-            pattern="[0-9]{4}"
-            placeholder="1978"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-          />
-          <button type="submit" className="button">
-            Go
-          </button>
-        </div>
-      </form>
-
-      <nav className="more-links" aria-label="More">
-        <a href={href({ name: 'undated' })}>
-          Photos without a date
+      <nav className="list-group" aria-label="More">
+        <a className="list-row" href={href({ name: 'undated' })}>
+          <span>Photos without a date</span>
           <ChevronIcon />
         </a>
-        <a href={href({ name: 'deleted' })}>
-          Recently deleted
+        <a className="list-row" href={href({ name: 'deleted' })}>
+          <span>Recently deleted</span>
           <ChevronIcon />
         </a>
       </nav>
+
+      {jumping && (
+        <Sheet title="Jump to a year" onClose={() => setJumping(false)}>
+          <form
+            className="field"
+            onSubmit={(e) => {
+              setJumping(false);
+              jump(e);
+            }}
+          >
+            <label htmlFor="jump-year">Show photos from this year and earlier</label>
+            <div className="row">
+              <input
+                id="jump-year"
+                className="input"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                placeholder="1978"
+                autoFocus
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+              />
+              <button type="submit" className="button">
+                Go
+              </button>
+            </div>
+          </form>
+        </Sheet>
+      )}
     </main>
   );
 }

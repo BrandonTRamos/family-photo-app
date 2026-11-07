@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { ErrorNotice, Loading, Print, Sheet, useApi, useLoad } from '../components';
+import { ErrorNotice, Loading, NavBar, Print, Sheet, useApi, useLoad } from '../components';
 import { shortDate } from '../format';
-import { BackIcon } from '../icons';
-import { href } from '../router';
 
 /** The signed-in family member's own deleted items, kept 30 days. */
 export function RecentlyDeleted() {
@@ -22,22 +20,14 @@ export function RecentlyDeleted() {
   }
 
   return (
-    <main className="page">
-      <div>
-        <a className="link-button" href={href({ name: 'timeline' })}>
-          <BackIcon />
-          Back to Timeline
-        </a>
-      </div>
-      <header>
-        <h1 className="page-title">Recently deleted</h1>
-        <p className="subtitle">Things you deleted. Each is deleted for good 30 days later; until then you can restore it.</p>
-      </header>
+    <main className="page push">
+      <NavBar title="Recently deleted" back={{ route: { name: 'timeline' }, label: 'Back to Timeline' }} />
+      <p className="subtitle">Things you deleted. Each is deleted for good 30 days later; until then you can restore it.</p>
       {(error || actionError) && <ErrorNotice message={(error ?? actionError)!} retry={error ? reload : undefined} />}
       {!data && !error && <Loading />}
-      {data && data.items.length === 0 && <p className="notice">Nothing here.</p>}
+      {data && data.items.length === 0 && <p className="empty">Nothing here.</p>}
       {data && data.items.length > 0 && (
-        <ul className="file-list">
+        <ul className="file-list list-group">
           {data.items.map((i) => (
             <li key={i.id} className="file-row">
               <div style={{ width: 88, flexShrink: 0 }}>

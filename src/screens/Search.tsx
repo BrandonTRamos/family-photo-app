@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { SearchDto } from '../../core/api-types';
-import { ErrorNotice, Grid, useApi } from '../components';
+import { ErrorNotice, Grid, NavBar, useApi } from '../components';
+import { ClearIcon, SearchIcon } from '../icons';
 import { href } from '../router';
 
 /** Wait this long after the last keystroke before searching. */
@@ -72,26 +73,35 @@ export function Search({ tags }: { tags: string[] }) {
 
   return (
     <main className="page">
-      <h1 className="page-title">Search</h1>
-      <form className="field" onSubmit={submit} role="search">
-        <label htmlFor="q">Search by what's in the photo</label>
-        <input
-          id="q"
-          ref={input}
-          className="input"
-          type="search"
-          autoComplete="off"
-          enterKeyHint="search"
-          placeholder="dog, beach, birthday"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <p className="hint">Part of a word is enough. To combine, separate with commas.</p>
+      <NavBar title="Search" />
+      <form className="field search-form" onSubmit={submit} role="search">
+        <label htmlFor="q" className="visually-hidden">
+          Search by what's in the photo
+        </label>
+        <div className="search-field">
+          <SearchIcon />
+          <input
+            id="q"
+            ref={input}
+            type="search"
+            autoComplete="off"
+            enterKeyHint="search"
+            placeholder="dog, beach, birthday"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          {text && (
+            <button type="button" className="clear" aria-label="Clear search" onClick={() => (setText(''), input.current?.focus())}>
+              <ClearIcon />
+            </button>
+          )}
+        </div>
+        <p className="hint">Search by what's in the photo. Part of a word is enough; separate with commas to combine.</p>
       </form>
 
       {showing && showing.related.length > 0 && (
-        <div className="chips" style={{ alignItems: 'center' }}>
-          <span className="muted">Also try:</span>
+        <div className="chips scroll-row" style={{ alignItems: 'center' }}>
+          <span className="muted">Also try</span>
           {showing.related.map((r) => (
             <button key={r.key} type="button" className="chip-button" onClick={() => setText(r.label)}>
               {r.label}
@@ -104,14 +114,14 @@ export function Search({ tags }: { tags: string[] }) {
       {busy && !showing && <p className="muted">Searching…</p>}
       {showing && (
         <>
-          <p style={{ margin: 0, borderTop: '1px solid var(--rule)', paddingTop: 12 }} aria-live="polite">
+          <p className="result-count" aria-live="polite">
             <strong>{showing.count}</strong> {showing.count === 1 ? 'photo or video' : 'photos and videos'} matching{' '}
             <strong>{showing.tags.join(' + ')}</strong>
             {busy && <span className="muted"> · searching…</span>}
           </p>
           <Grid items={showing.items} />
           {showing.cursor && (
-            <button type="button" className="button outline block" disabled={busy} onClick={more}>
+            <button type="button" className="button secondary block" disabled={busy} onClick={more}>
               {busy ? 'Loading…' : 'Show more'}
             </button>
           )}

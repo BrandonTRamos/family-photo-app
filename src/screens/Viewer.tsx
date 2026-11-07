@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto } from '../../core/api-types';
-import { ErrorNotice, Loading, Sheet, useApi, useLoad } from '../components';
-import { fullDate } from '../format';
-import { BackIcon, CloseIcon, SparkleIcon } from '../icons';
+import { ErrorNotice, Loading, NavBar, Sheet, useApi, useLoad } from '../components';
+import { fullDate, shortDate } from '../format';
+import { AlbumAddIcon, ChevronIcon, CloseIcon, ShareIcon, SparkleIcon, TrashIcon } from '../icons';
 import { setFlash } from '../flash';
 import { href, navigate } from '../router';
 
@@ -42,19 +42,17 @@ export function Viewer({ id }: { id: string }) {
     await act(() => api.setDate(id, date));
   }
 
-  const back = (
-    <a className="link-button" href={href({ name: 'timeline' })}>
-      <BackIcon />
-      Back to Timeline
-    </a>
-  );
+  const back = { route: { name: 'timeline' } as const, label: 'Back to Timeline' };
+  const nav = (title: string) => <NavBar large={false} back={back} title={title} />;
 
-  if (error) return <main className="page">{back}<ErrorNotice message={error} retry={reload} /></main>;
-  if (!item) return <main className="page">{back}<Loading variant="photo" /></main>;
+  if (error) return <main className="page push">{nav('')}<ErrorNotice message={error} retry={reload} /></main>;
+  if (!item) return <main className="page push">{nav('')}<Loading variant="photo" /></main>;
+
+  const mediaUrl = item.kind === 'video' ? item.videoUrl : item.displayUrl;
 
   return (
-    <main className="page">
-      <div>{back}</div>
+    <main className="page push">
+      {nav(item.capture ? shortDate(item.capture.date) : item.kind === 'video' ? 'Video' : 'Photo')}
 
       {item.status === 'processing' && (
         <p className="notice">
@@ -108,15 +106,51 @@ export function Viewer({ id }: { id: string }) {
         </figure>
       )}
 
-      <div>
+      {item.status === 'ready' && (
+        <div className="action-bar">
+          {mediaUrl && (
+            <button type="button" className="action" onClick={() => void share(mediaUrl, item.kind)}>
+              <span className="action-icon">
+                <ShareIcon />
+              </span>
+              Share
+            </button>
+          )}
+          <button type="button" className="action" onClick={() => setAlbumSheet(true)}>
+            <span className="action-icon">
+              <AlbumAddIcon />
+            </span>
+            Add to album
+          </button>
+          {item.canDelete && (
+            <button type="button" className="action danger" onClick={() => setConfirmDelete(true)}>
+              <span className="action-icon">
+                <TrashIcon />
+              </span>
+              Delete
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="card">
         <h1 className="full-date">{item.capture ? fullDate(item.capture.date) : 'No date yet'}</h1>
         <p className="subtitle">Added by {item.addedBy}</p>
+        {item.albums.map((a) => (
+          <a key={a.id} className="list-row inset" href={href({ name: 'album', id: a.id })}>
+            <span>
+              <span className="muted">Album · </span>
+              {a.name}
+            </span>
+            <ChevronIcon />
+          </a>
+        ))}
       </div>
 
       {actionError && <ErrorNotice message={actionError} />}
 
       {item.canSetDate && (
-        <form className="field notice" onSubmit={saveDate}>
+        <form className="field card" onSubmit={saveDate}>
           <label htmlFor="set-date">If you know exactly when this was taken, set its date</label>
           <div className="row">
             <input
@@ -136,7 +170,7 @@ export function Viewer({ id }: { id: string }) {
       )}
 
       {item.status === 'ready' && (
-        <section className="section">
+        <section className="section card">
           <h2 className="section-title">
             What's in this {item.kind}
           </h2>
@@ -189,32 +223,6 @@ export function Viewer({ id }: { id: string }) {
             </p>
           )}
         </section>
-      )}
-
-      {item.albums.length > 0 && (
-        <p style={{ margin: 0 }}>
-          In {item.albums.length} album{item.albums.length === 1 ? '' : 's'}:{' '}
-          {item.albums.map((a, i) => (
-            <span key={a.id}>
-              {i > 0 && ', '}
-              <a href={href({ name: 'album', id: a.id })} style={{ fontWeight: 700 }}>
-                {a.name}
-              </a>
-            </span>
-          ))}
-        </p>
-      )}
-
-      {item.status === 'ready' && (
-        <button type="button" className="button block" onClick={() => setAlbumSheet(true)}>
-          Add to album
-        </button>
-      )}
-
-      {item.canDelete && (
-        <button type="button" className="button danger block" onClick={() => setConfirmDelete(true)}>
-          Delete this {item.kind}
-        </button>
       )}
 
       {confirmDelete && (
@@ -331,4 +339,23 @@ function AddToAlbum(props: { itemId: string; inAlbums: string[]; onClose: () => 
       </form>
     </Sheet>
   );
+}
+
+/** Share the photo or video itself (to Messages, Save Image, …), or its link where files can't be shared. */
+async function share(url: string, kind: 'photo' | 'video') {
+  try {
+    const blob = await (await fetch(url)).blob();
+    const file = new File([blob], kind === 'video' ? 'family-video.mp4' : 'family-photo.jpg', { type: blob.type });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      return;
+    }
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return; // closed the share sheet
+  }
+  if (navigator.share) {
+    await navigator.share({ url }).catch(() => undefined);
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
 }

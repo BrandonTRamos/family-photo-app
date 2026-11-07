@@ -161,6 +161,8 @@ export class ArchiveResources extends Construct {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         trustedKeyGroups: [new cloudfront.KeyGroup(this, 'CdnKeyGroup', { items: [publicKey] })],
+        // Lets the app fetch a file to hand to the phone's share sheet. Links are still signed.
+        responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
       },
     });
 

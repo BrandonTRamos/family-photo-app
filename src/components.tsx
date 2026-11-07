@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { ItemSummaryDto } from '../core/api-types';
 import type { ApiClient } from './api';
 import { duration, durationWords, shortDate } from './format';
-import { AlbumsIcon, PlayIcon, SearchIcon, TimelineIcon, UploadIcon } from './icons';
+import { AlbumsIcon, BackIcon, PlayIcon, SearchIcon, TimelineIcon, UploadIcon } from './icons';
 import { href, tabFor, type Route } from './router';
 
 type Tab = { tab: 'timeline' | 'albums' | 'search' | 'upload'; label: string; route: Route; icon: ReactNode };
@@ -154,19 +154,90 @@ export function Navigation({ route, children }: { route: Route; children?: React
   );
 }
 
+/**
+ * The bar at the top of every screen, like an iOS navigation bar: a large title that, once scrolled away,
+ * shrinks into a small centred title on a blurred bar. Round buttons for back and actions.
+ */
+export function NavBar({
+  title,
+  back,
+  actions,
+  eyebrow,
+  large = true,
+  compactTitle,
+}: {
+  title: ReactNode;
+  back?: { route: Route; label: string };
+  actions?: ReactNode;
+  eyebrow?: ReactNode;
+  large?: boolean;
+  /** Shorter title for the small bar, when the large one is long. */
+  compactTitle?: string;
+}) {
+  const scrolled = useScrolled(large ? 56 : 8);
+  return (
+    <>
+      <header className="navbar" data-scrolled={scrolled || undefined} data-large={large || undefined}>
+        <div className="navbar-side">
+          {back && (
+            <a className="icon-button glass" href={href(back.route)} aria-label={back.label}>
+              <BackIcon />
+            </a>
+          )}
+        </div>
+        <p className="navbar-title" aria-hidden={large ? true : undefined}>
+          {compactTitle ?? title}
+        </p>
+        <div className="navbar-side end">{actions}</div>
+      </header>
+      {large && (
+        <div className="large-title">
+          {eyebrow}
+          <h1 className="page-title">{title}</h1>
+        </div>
+      )}
+    </>
+  );
+}
+
+function useScrolled(threshold: number): boolean {
+  const [scrolled, setScrolled] = useState(() => window.scrollY > threshold);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > threshold);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [threshold]);
+  return scrolled;
+}
+
+/** A round glass button with an icon, for the top bar. */
+export function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" className="icon-button glass" aria-label={label} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
   }, [onClose]);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <span className="grabber" aria-hidden="true" />
         <h2>{title}</h2>
         {children}
-        <button type="button" className="button outline block" onClick={onClose}>
-          Close
+        <button type="button" className="button secondary block" onClick={onClose}>
+          Cancel
         </button>
       </div>
     </div>

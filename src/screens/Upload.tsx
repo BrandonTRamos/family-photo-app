@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PHOTO_TYPES, VIDEO_TYPES } from '../../core/api-types';
-import { ErrorNotice, useApi, useLoad } from '../components';
+import { ErrorNotice, NavBar, useApi, useLoad } from '../components';
 import { duration, shortDate } from '../format';
 import { CloseIcon, SparkleIcon, UploadIcon } from '../icons';
 import { href } from '../router';
@@ -91,7 +91,7 @@ export function Upload() {
 
   return (
     <main className="page">
-      <h1 className="page-title">Add photos &amp; videos</h1>
+      <NavBar title="Add photos" />
 
       <label className="choose">
         <UploadIcon size={28} />
@@ -107,7 +107,7 @@ export function Upload() {
           <h2 className="section-title">
             {files.length} selected
           </h2>
-          <ul className="file-list">
+          <ul className="file-list list-group">
             {files.map((f) => (
               <li key={f.key} className="file-row">
                 {f.kind === 'photo' ? <img className="thumb" src={f.preview} alt="" /> : <span className="thumb">Video</span>}
@@ -186,14 +186,22 @@ export function Upload() {
 
       {error && <ErrorNotice message={error} />}
       {done > 0 && pending === 0 && !busy && (
-        <p className="notice">
-          Done. <a href={href({ name: 'timeline' })}>Back to the Timeline</a>
-        </p>
+        <div className="card done">
+          <strong>All uploaded. Thank you!</strong>
+          <span className="muted">They'll appear on the Timeline in a moment.</span>
+          <a className="button secondary" href={href({ name: 'timeline' })}>
+            See the Timeline
+          </a>
+        </div>
       )}
 
-      <button type="button" className="button block" disabled={busy || pending === 0} onClick={send}>
-        {busy ? 'Uploading…' : pending ? `Upload ${pending} item${pending === 1 ? '' : 's'}` : 'Upload'}
-      </button>
+      {pending > 0 && (
+        <div className="sticky-action">
+          <button type="button" className="button block" disabled={busy} onClick={send}>
+            {busy ? 'Uploading…' : `Upload ${pending} item${pending === 1 ? '' : 's'}`}
+          </button>
+        </div>
+      )}
     </main>
   );
 }
