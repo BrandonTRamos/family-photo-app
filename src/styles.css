@@ -1906,120 +1906,134 @@ a.icon-button:hover {
   scroll-margin-top: calc(var(--navbar-height) + env(safe-area-inset-top));
 }
 
-/* ======== Tags: soft filled pills; one accent pill to add; removing lives behind Edit ======== */
+/* ======== Tags: small, quiet "#tag" chips (after Craft, Alta); a tiny + to add; removing lives behind Edit ======== */
 .tags {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .tags-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 32px;
+}
+.small-label {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
 }
 .text-button {
-  min-height: 44px;
-  padding: 0 4px;
+  min-height: 32px;
+  padding: 0 2px;
   border: 0;
   background: none;
   color: var(--accent);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 .text-button.quiet {
   color: var(--muted);
+  font-weight: 500;
 }
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .tag {
-  min-height: 38px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 14px;
+  gap: 1px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 19px;
+  border-radius: 8px;
   background: var(--paper-deep);
   color: var(--ink);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
+  letter-spacing: -0.01em;
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, transform 0.15s var(--ease);
 }
+.tag .hash {
+  margin-right: 1px;
+  color: #a7adb4;
+  font-weight: 400;
+}
 .tag:hover {
   color: var(--ink);
-  background: #e7e9ec;
+  background: #e8eaed;
 }
 .tag:active {
   transform: scale(0.96);
 }
-.tag svg {
-  width: 13px;
-  height: 13px;
-  flex: none;
+/* Tags family members added: a hint of the accent. */
+.tag.family {
+  background: #e8f1f6;
+  color: var(--accent-dark);
 }
-.tag svg path {
-  fill: #8fb3c6;
+.tag.family .hash {
+  color: #8fb3c6;
 }
 .tag.add {
-  background: var(--accent);
+  width: 30px;
+  padding: 0;
+  justify-content: center;
+  color: var(--muted);
+}
+.tag.add svg {
+  width: 16px;
+  height: 16px;
+}
+.tag.save {
+  background: var(--ink);
   color: #fff;
   font-weight: 600;
 }
-.tag.add svg path {
-  fill: none;
-}
-.tag.add:disabled {
-  opacity: 0.5;
+.tag.save:disabled {
+  opacity: 0.35;
 }
 .tag.editing {
-  background: #fdecea;
+  gap: 2px;
+  background: #fdeeec;
   color: var(--danger);
-  animation: wiggle 0.3s ease-in-out infinite alternate;
+}
+.tag.editing .hash {
+  color: #e4a49c;
 }
 .tag.editing svg {
-  width: 14px;
-  height: 14px;
-}
-@keyframes wiggle {
-  from {
-    transform: rotate(-1.2deg);
-  }
-  to {
-    transform: rotate(1.2deg);
-  }
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
 }
 .tag-form {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 4px 4px 16px;
-  border-radius: 24px;
+  gap: 4px;
+  height: 40px;
+  padding: 0 5px 0 12px;
+  border-radius: 10px;
   background: var(--paper-deep);
 }
 .tag-form input {
   flex: 1;
   min-width: 0;
-  height: 40px;
+  height: 100%;
   border: 0;
   background: transparent;
-  font-size: 17px;
+  font-size: 16px;
   outline: none;
 }
 .tags .hint {
   font-size: 15px;
 }
-.tags .hint svg {
-  width: 13px;
-  height: 13px;
-}
 @media (prefers-reduced-motion: reduce) {
-  .tag.editing,
   .hero img.loaded {
     animation: none;
   }

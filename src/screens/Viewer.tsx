@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto } from '../../core/api-types';
 import { ErrorNotice, Loading, NavBar, Sheet, useApi, useLoad } from '../components';
 import { fullDate, shortDate } from '../format';
-import { AlbumAddIcon, ChevronIcon, CloseIcon, PlusIcon, ShareIcon, SparkleIcon, TrashIcon } from '../icons';
+import { AlbumAddIcon, ChevronIcon, CloseIcon, PlusIcon, ShareIcon, TrashIcon } from '../icons';
 import { setFlash } from '../flash';
 import { href, navigate } from '../router';
 
@@ -121,8 +121,8 @@ export function Viewer({ id }: { id: string }) {
       {item.status === 'ready' && (
         <section className="tags" aria-labelledby="tags-title">
           <div className="tags-head">
-            <h2 id="tags-title" className="row-title">
-              In this {item.kind}
+            <h2 id="tags-title" className="small-label">
+              Tags
             </h2>
             {item.tags.length > 0 && (
               <button type="button" className="text-button" onClick={() => setEditingTags((e) => !e)}>
@@ -140,20 +140,25 @@ export function Viewer({ id }: { id: string }) {
                   aria-label={`Remove tag ${t.label}`}
                   onClick={() => act(() => api.removeTag(id, t.key))}
                 >
+                  <span className="hash">#</span>
                   {t.label}
                   <CloseIcon />
                 </button>
               ) : (
-                <a key={t.key} className="tag" href={href({ name: 'search', tags: [t.label] })} aria-label={`See everything tagged ${t.label}`}>
-                  {t.source === 'ai' && <SparkleIcon label="Added automatically" />}
+                <a
+                  key={t.key}
+                  className={t.source === 'family' ? 'tag family' : 'tag'}
+                  href={href({ name: 'search', tags: [t.label] })}
+                  aria-label={`See everything tagged ${t.label}${t.source === 'ai' ? ' (added automatically)' : ''}`}
+                >
+                  <span className="hash">#</span>
                   {t.label}
                 </a>
               ),
             )}
             {!adding && !editing && (
-              <button type="button" className="tag add" onClick={() => setAdding(true)}>
+              <button type="button" className="tag add" aria-label="Add a tag" onClick={() => setAdding(true)}>
                 <PlusIcon size={16} />
-                Add tag
               </button>
             )}
           </div>
@@ -173,20 +178,12 @@ export function Viewer({ id }: { id: string }) {
               <button type="button" className="text-button quiet" onClick={() => (setAdding(false), setNewTag(''))}>
                 Cancel
               </button>
-              <button type="submit" className="tag add" disabled={!newTag.trim()}>
+              <button type="submit" className="tag save" disabled={!newTag.trim()}>
                 Add
               </button>
             </form>
           )}
-          <p className="hint">
-            {editing ? (
-              'Tap a tag to remove it.'
-            ) : (
-              <>
-                <SparkleIcon /> Added automatically · tap a tag to see more like it
-              </>
-            )}
-          </p>
+          {editing && <p className="hint">Tap a tag to remove it.</p>}
         </section>
       )}
 

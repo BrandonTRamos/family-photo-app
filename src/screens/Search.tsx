@@ -104,6 +104,7 @@ export function Search({ tags }: { tags: string[] }) {
           <span className="muted">Also try</span>
           {showing.related.map((r) => (
             <button key={r.key} type="button" className="tag" onClick={() => setText(r.label)}>
+              <span className="hash">#</span>
               {r.label}
             </button>
           ))}
