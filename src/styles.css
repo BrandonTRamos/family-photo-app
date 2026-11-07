@@ -1745,3 +1745,288 @@ a.icon-button:hover {
     font-size: 22px;
   }
 }
+
+/* ======== Timeline opening: a full-bleed photo with the title over it, then month cards ======== */
+.hero {
+  position: relative;
+  display: block;
+  /* Up under the clear top bar (and the page's 18px gap after it). */
+  margin: calc(-1 * (var(--navbar-height) + env(safe-area-inset-top)) - 18px) -20px 0;
+  height: min(64vh, 540px);
+  overflow: hidden;
+  border-radius: 0 0 32px 32px;
+  background: #1d2a33;
+  color: #fff;
+  text-decoration: none;
+}
+.hero:hover {
+  color: #fff;
+}
+.hero img,
+.hero-blank {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero img.loaded {
+  animation: hero-in 1.2s var(--ease) both;
+}
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.28), transparent 26%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.18) 45%, transparent 70%);
+}
+.hero-text {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 24px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
+}
+.hero-greeting {
+  font-size: 17px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.hero-title {
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+.hero-latest {
+  margin-top: 8px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  font-size: 15px;
+  font-weight: 600;
+  text-shadow: none;
+}
+.hero-latest svg {
+  width: 11px;
+  height: 11px;
+}
+/* Over the photo the bar is clear and its buttons are frosted white. */
+.navbar[data-hero]:not([data-scrolled]) .icon-button {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.navbar[data-hero]:not([data-scrolled]) {
+  background: transparent;
+  box-shadow: none;
+}
+
+.row-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.month-cards-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.month-cards {
+  display: flex;
+  gap: 10px;
+}
+.month-card {
+  position: relative;
+  width: 128px;
+  height: 172px;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--paper-deep);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+.month-card:active {
+  transform: scale(0.96);
+}
+.month-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.month-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), transparent 60%);
+}
+.month-card-label {
+  position: absolute;
+  left: 12px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  text-align: left;
+}
+.month-card-label strong {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.month-card-label span {
+  font-size: 15px;
+  opacity: 0.9;
+}
+.month-section {
+  scroll-margin-top: calc(var(--navbar-height) + env(safe-area-inset-top));
+}
+
+/* ======== Tags: soft filled pills; one accent pill to add; removing lives behind Edit ======== */
+.tags {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tags-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.text-button {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.text-button.quiet {
+  color: var(--muted);
+}
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tag {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 19px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s var(--ease);
+}
+.tag:hover {
+  color: var(--ink);
+  background: #e7e9ec;
+}
+.tag:active {
+  transform: scale(0.96);
+}
+.tag svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.tag svg path {
+  fill: #8fb3c6;
+}
+.tag.add {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.tag.add svg path {
+  fill: none;
+}
+.tag.add:disabled {
+  opacity: 0.5;
+}
+.tag.editing {
+  background: #fdecea;
+  color: var(--danger);
+  animation: wiggle 0.3s ease-in-out infinite alternate;
+}
+.tag.editing svg {
+  width: 14px;
+  height: 14px;
+}
+@keyframes wiggle {
+  from {
+    transform: rotate(-1.2deg);
+  }
+  to {
+    transform: rotate(1.2deg);
+  }
+}
+.tag-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 16px;
+  border-radius: 24px;
+  background: var(--paper-deep);
+}
+.tag-form input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  font-size: 17px;
+  outline: none;
+}
+.tags .hint {
+  font-size: 15px;
+}
+.tags .hint svg {
+  width: 13px;
+  height: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag.editing,
+  .hero img.loaded {
+    animation: none;
+  }
+}
+@media (min-width: 900px) {
+  .hero {
+    margin: 16px 0 0;
+    border-radius: 28px;
+  }
+}

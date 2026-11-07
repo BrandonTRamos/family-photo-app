@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto } from '../../core/api-types';
 import { ErrorNotice, Loading, NavBar, Sheet, useApi, useLoad } from '../components';
 import { fullDate, shortDate } from '../format';
-import { AlbumAddIcon, ChevronIcon, CloseIcon, ShareIcon, SparkleIcon, TrashIcon } from '../icons';
+import { AlbumAddIcon, ChevronIcon, CloseIcon, PlusIcon, ShareIcon, SparkleIcon, TrashIcon } from '../icons';
 import { setFlash } from '../flash';
 import { href, navigate } from '../router';
 
@@ -11,6 +11,7 @@ export function Viewer({ id }: { id: string }) {
   const { data: item, error, reload, set } = useLoad(() => api.item(id), [id]);
   const [actionError, setActionError] = useState<string>();
   const [adding, setAdding] = useState(false);
+  const [editingTags, setEditingTags] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [date, setDate] = useState('');
   const [albumSheet, setAlbumSheet] = useState(false);
@@ -49,6 +50,7 @@ export function Viewer({ id }: { id: string }) {
   if (!item) return <main className="page push">{nav('')}<Loading variant="photo" /></main>;
 
   const mediaUrl = item.kind === 'video' ? item.videoUrl : item.displayUrl;
+  const editing = editingTags && item.tags.length > 0;
 
   return (
     <main className="page push">
@@ -116,6 +118,78 @@ export function Viewer({ id }: { id: string }) {
         </div>
       </div>
 
+      {item.status === 'ready' && (
+        <section className="tags" aria-labelledby="tags-title">
+          <div className="tags-head">
+            <h2 id="tags-title" className="row-title">
+              In this {item.kind}
+            </h2>
+            {item.tags.length > 0 && (
+              <button type="button" className="text-button" onClick={() => setEditingTags((e) => !e)}>
+                {editing ? 'Done' : 'Edit'}
+              </button>
+            )}
+          </div>
+          <div className="tag-list">
+            {item.tags.map((t) =>
+              editing ? (
+                <button
+                  key={t.key}
+                  type="button"
+                  className="tag editing"
+                  aria-label={`Remove tag ${t.label}`}
+                  onClick={() => act(() => api.removeTag(id, t.key))}
+                >
+                  {t.label}
+                  <CloseIcon />
+                </button>
+              ) : (
+                <a key={t.key} className="tag" href={href({ name: 'search', tags: [t.label] })} aria-label={`See everything tagged ${t.label}`}>
+                  {t.source === 'ai' && <SparkleIcon label="Added automatically" />}
+                  {t.label}
+                </a>
+              ),
+            )}
+            {!adding && !editing && (
+              <button type="button" className="tag add" onClick={() => setAdding(true)}>
+                <PlusIcon size={16} />
+                Add tag
+              </button>
+            )}
+          </div>
+          {adding && (
+            <form className="tag-form" onSubmit={addTag}>
+              <label htmlFor="new-tag" className="visually-hidden">
+                New tag
+              </label>
+              <input
+                id="new-tag"
+                autoFocus
+                maxLength={40}
+                placeholder="Cousins, Grandma's house…"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+              />
+              <button type="button" className="text-button quiet" onClick={() => (setAdding(false), setNewTag(''))}>
+                Cancel
+              </button>
+              <button type="submit" className="tag add" disabled={!newTag.trim()}>
+                Add
+              </button>
+            </form>
+          )}
+          <p className="hint">
+            {editing ? (
+              'Tap a tag to remove it.'
+            ) : (
+              <>
+                <SparkleIcon /> Added automatically · tap a tag to see more like it
+              </>
+            )}
+          </p>
+        </section>
+      )}
+
       {item.albums.length > 0 && (
         <div className="list-group">
           {item.albums.map((a) => (
@@ -171,62 +245,6 @@ export function Viewer({ id }: { id: string }) {
             </button>
           </div>
         </form>
-      )}
-
-      {item.status === 'ready' && (
-        <section className="section card">
-          <h2 className="section-title">
-            What's in this {item.kind}
-          </h2>
-          <div className="chips">
-            {item.tags.map((t) => (
-              <span key={t.key} className="chip">
-                <a className="chip-link" href={href({ name: 'search', tags: [t.label] })} aria-label={`See everything tagged ${t.label}`}>
-                  {t.source === 'ai' && <SparkleIcon label="Added automatically" />}
-                  {t.label}
-                </a>
-                <button
-                  type="button"
-                  className="remove"
-                  aria-label={`Remove tag ${t.label}`}
-                  onClick={() => act(() => api.removeTag(id, t.key))}
-                >
-                  <CloseIcon />
-                </button>
-              </span>
-            ))}
-            {!adding && (
-              <button type="button" className="chip-button add" onClick={() => setAdding(true)}>
-                + Add a tag
-              </button>
-            )}
-          </div>
-          {adding && (
-            <form className="row" onSubmit={addTag}>
-              <label htmlFor="new-tag" className="visually-hidden">
-                New tag
-              </label>
-              <input
-                id="new-tag"
-                className="input"
-                autoFocus
-                maxLength={40}
-                placeholder="Cousins"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-              />
-              <button type="submit" className="button">
-                Add
-              </button>
-            </form>
-          )}
-          {item.tags.some((t) => t.source === 'ai') && (
-            <p className="hint">
-              <SparkleIcon />
-              Added automatically. Tap × to remove a wrong tag.
-            </p>
-          )}
-        </section>
       )}
 
       {confirmDelete && (

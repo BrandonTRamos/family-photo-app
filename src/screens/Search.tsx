@@ -103,7 +103,7 @@ export function Search({ tags }: { tags: string[] }) {
         <div className="chips scroll-row" style={{ alignItems: 'center' }}>
           <span className="muted">Also try</span>
           {showing.related.map((r) => (
-            <button key={r.key} type="button" className="chip-button" onClick={() => setText(r.label)}>
+            <button key={r.key} type="button" className="tag" onClick={() => setText(r.label)}>
               {r.label}
             </button>
           ))}

@@ -165,6 +165,7 @@ export function NavBar({
   meta,
   large = true,
   compactTitle,
+  overHero,
 }: {
   title: ReactNode;
   back?: { route: Route; label: string };
@@ -174,11 +175,18 @@ export function NavBar({
   large?: boolean;
   /** Shorter title for the small bar, when the large one is long. */
   compactTitle?: string;
+  /** Sits clear over a full-bleed photo that shows the title; the bar appears once scrolled past it. */
+  overHero?: boolean;
 }) {
-  const scrolled = useScrolled(large ? 56 : 8);
+  const scrolled = useScrolled(overHero ? 300 : large ? 56 : 8);
   return (
     <>
-      <header className="navbar" data-scrolled={scrolled || undefined} data-large={large || undefined}>
+      <header
+        className="navbar"
+        data-scrolled={scrolled || undefined}
+        data-large={large || overHero || undefined}
+        data-hero={overHero || undefined}
+      >
         <div className="navbar-side">
           {back && (
             <a className="icon-button glass" href={href(back.route)} aria-label={back.label}>
@@ -191,7 +199,7 @@ export function NavBar({
         </p>
         <div className="navbar-side end">{actions}</div>
       </header>
-      {large && (
+      {large && !overHero && (
         <div className="large-title">
           <h1 className="page-title">{title}</h1>
           {meta && <p className="title-meta">{meta}</p>}

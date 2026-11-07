@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { ItemDetailDto, TimelineDto, TimelineMonthDto } from '../../core/api-types';
 import { ErrorNotice, Grid, IconButton, Loading, NavBar, Sheet, useApi } from '../components';
-import { dayHeading, duration, greeting, items, longDate, monthName } from '../format';
+import { dayHeading, greeting, items, monthName, shortDate } from '../format';
 import { CalendarIcon, ChevronIcon, PlayIcon } from '../icons';
 import { takeFlash } from '../flash';
 import { href } from '../router';
@@ -72,12 +72,14 @@ export function Timeline({ name }: { name?: string }) {
   }
 
   const [jumping, setJumping] = useState(false);
+  const showHero = jumpedTo === undefined && months.length > 0;
 
   return (
     <main className="page">
       <NavBar
         title="Family Archive"
         meta={greeting(name)}
+        overHero={showHero}
         actions={
           <IconButton label="Jump to a year" onClick={() => setJumping(true)}>
             <CalendarIcon />
@@ -85,7 +87,12 @@ export function Timeline({ name }: { name?: string }) {
         }
       />
 
-      {jumpedTo === undefined && months[0] && <Latest id={months[0].days[0].items[0].id} />}
+      {showHero && (
+        <>
+          <Hero id={months[0].days[0].items[0].id} greeting={greeting(name)} />
+          <MonthCards months={months} />
+        </>
+      )}
 
       {jumpedTo !== undefined && (
         <button
@@ -122,7 +129,7 @@ export function Timeline({ name }: { name?: string }) {
       )}
 
       {months.map((m) => (
-        <section key={m.month} className="month-section" aria-label={`${monthName(m.month)} ${m.month.slice(0, 4)}`}>
+        <section key={m.month} id={`m-${m.month}`} className="month-section" aria-label={`${monthName(m.month)} ${m.month.slice(0, 4)}`}>
           <h2 className="month-bar">
             <span className="month">
               {monthName(m.month)} <span className="month-year">{m.month.slice(0, 4)}</span>
@@ -189,10 +196,14 @@ export function Timeline({ name }: { name?: string }) {
   );
 }
 
-/** The newest photo or video, shown large as a print. */
-function Latest({ id }: { id: string }) {
+/**
+ * The top of the Timeline: the newest photo or video edge to edge, with the greeting and title over it,
+ * like the opening of a photo book.
+ */
+function Hero({ id, greeting }: { id: string; greeting: string }) {
   const api = useApi();
   const [item, setItem] = useState<ItemDetailDto>();
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let live = true;
     api.item(id).then((it) => live && setItem(it), () => undefined); // decoration only: skip it on error
@@ -201,29 +212,51 @@ function Latest({ id }: { id: string }) {
     };
   }, [api, id]);
   const src = item && (item.kind === 'video' ? item.posterUrl ?? item.thumbUrl : item.displayUrl ?? item.thumbUrl);
-  if (!item || !src) {
-    return (
-      <div className="hero-print placeholder" aria-hidden="true">
-        <span className="shimmer" />
-      </div>
-    );
-  }
   return (
-    <a className="hero-print" href={href({ name: 'item', id: item.id })}>
-      <span className="hero-photo">
-        <img src={src} alt="" />
-        {item.kind === 'video' && (
-          <span className="badge">
-            <PlayIcon />
-            {duration(item.durationMs)}
+    <a className="hero" href={href({ name: 'item', id })} aria-label="Open the latest photo">
+      {src ? (
+        <img src={src} alt="" className={loaded ? 'loaded' : undefined} onLoad={() => setLoaded(true)} />
+      ) : (
+        <span className="hero-blank shimmer" />
+      )}
+      <span className="hero-text">
+        <span className="hero-greeting">{greeting}</span>
+        <span className="hero-title">Family Archive</span>
+        {item && (
+          <span className="hero-latest">
+            {item.kind === 'video' && <PlayIcon />}
+            Latest{item.capture ? ` · ${shortDate(item.capture.date)}` : ''} · {item.addedBy}
           </span>
         )}
       </span>
-      <span className="hero-caption">
-        <span className="eyebrow">Latest</span>
-        {item.capture && <span className="hero-date">{longDate(item.capture.date)}</span>}
-        <span className="muted">Added by {item.addedBy}</span>
-      </span>
     </a>
+  );
+}
+
+/** Tall cards for the latest months, scrolling sideways; tap one to jump to it. */
+function MonthCards({ months }: { months: TimelineMonthDto[] }) {
+  if (months.length < 2) return null;
+  return (
+    <section className="month-cards-section" aria-label="Months">
+      <h2 className="row-title">Months</h2>
+      <div className="month-cards scroll-row">
+        {months.slice(0, 10).map((m) => (
+          <button
+            key={m.month}
+            type="button"
+            className="month-card"
+            onClick={() => document.getElementById(`m-${m.month}`)?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <img src={m.days[0].items[0].thumbUrl} alt="" loading="lazy" />
+            <span className="month-card-label">
+              <strong>{monthName(m.month)}</strong>
+              <span>
+                {m.month.slice(0, 4)} · {m.count}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
