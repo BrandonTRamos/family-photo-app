@@ -64,9 +64,9 @@ export function Print({ item }: { item: ItemSummaryDto }) {
   );
 }
 
-export function Grid({ items }: { items: ItemSummaryDto[] }) {
+export function Grid({ items, large }: { items: ItemSummaryDto[]; large?: boolean }) {
   return (
-    <div className="grid">
+    <div className={large ? 'grid large' : 'grid'}>
       {items.map((i) => (
         <Print key={i.id} item={i} />
       ))}
@@ -142,7 +142,7 @@ export function Navigation({ route, children }: { route: Route; children?: React
           </a>
         </div>
       </header>
-      <nav aria-label="Main" className="tabbar">
+      <nav aria-label="Main" className="tabbar" hidden={route.name === 'item'}>
         {tabs.map((t) => (
           <a key={t.tab} className="tab" href={href(t.route)} aria-current={current === t.tab ? 'page' : undefined}>
             {t.icon}
@@ -162,14 +162,15 @@ export function NavBar({
   title,
   back,
   actions,
-  eyebrow,
+  meta,
   large = true,
   compactTitle,
 }: {
   title: ReactNode;
   back?: { route: Route; label: string };
   actions?: ReactNode;
-  eyebrow?: ReactNode;
+  /** A small grey line under the title. */
+  meta?: ReactNode;
   large?: boolean;
   /** Shorter title for the small bar, when the large one is long. */
   compactTitle?: string;
@@ -192,8 +193,8 @@ export function NavBar({
       </header>
       {large && (
         <div className="large-title">
-          {eyebrow}
           <h1 className="page-title">{title}</h1>
+          {meta && <p className="title-meta">{meta}</p>}
         </div>
       )}
     </>

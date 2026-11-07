@@ -20,12 +20,16 @@ export function Undated() {
 
   return (
     <main className="page push">
-      <NavBar title="Without a date" compactTitle="Undated" back={{ route: { name: 'timeline' }, label: 'Back to Timeline' }} />
-      <p className="subtitle">These have no date yet. Open one and set its date if you know exactly when it was taken.</p>
+      <NavBar
+        title="Without a date"
+        compactTitle="Undated"
+        meta="Open one to set its date, if you know it"
+        back={{ route: { name: 'timeline' }, label: 'Back to Timeline' }}
+      />
       {error && <ErrorNotice message={error} retry={reload} />}
       {!data && !error && <Loading />}
       {data && data.count === 0 && <p className="empty">Everything has a date.</p>}
-      {data && <Grid items={data.items} />}
+      {data && <Grid items={data.items} large />}
       {data?.cursor && (
         <button type="button" className="button secondary block" disabled={busy} onClick={more}>
           {busy ? 'Loading…' : 'Show more'}

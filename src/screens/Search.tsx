@@ -73,7 +73,7 @@ export function Search({ tags }: { tags: string[] }) {
 
   return (
     <main className="page">
-      <NavBar title="Search" />
+      <NavBar title="Search" meta="Find photos by what's in them" />
       <form className="field search-form" onSubmit={submit} role="search">
         <label htmlFor="q" className="visually-hidden">
           Search by what's in the photo
@@ -96,7 +96,7 @@ export function Search({ tags }: { tags: string[] }) {
             </button>
           )}
         </div>
-        <p className="hint">Search by what's in the photo. Part of a word is enough; separate with commas to combine.</p>
+        <p className="hint">Part of a word is enough. Separate with commas to combine.</p>
       </form>
 
       {showing && showing.related.length > 0 && (
@@ -119,7 +119,7 @@ export function Search({ tags }: { tags: string[] }) {
             <strong>{showing.tags.join(' + ')}</strong>
             {busy && <span className="muted"> · searching…</span>}
           </p>
-          <Grid items={showing.items} />
+          <Grid items={showing.items} large />
           {showing.cursor && (
             <button type="button" className="button secondary block" disabled={busy} onClick={more}>
               {busy ? 'Loading…' : 'Show more'}

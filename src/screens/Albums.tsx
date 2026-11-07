@@ -27,13 +27,13 @@ export function Albums() {
     <main className="page">
       <NavBar
         title="Albums"
+        meta="Everything stays on the Timeline too"
         actions={
           <IconButton label="New album" onClick={() => setCreating(true)}>
             <PlusIcon />
           </IconButton>
         }
       />
-      <p className="subtitle">Albums group photos. Everything stays on the Timeline too.</p>
       {error && <ErrorNotice message={error} retry={reload} />}
       {!data && !error && <Loading />}
       {data && (
@@ -98,7 +98,7 @@ export function AlbumDetail({ id }: { id: string }) {
     <main className="page push">
       <NavBar
         title={data?.album.name ?? ''}
-        eyebrow={data && <p className="eyebrow">{items(data.album.count)}</p>}
+        meta={data && items(data.album.count)}
         back={{ route: { name: 'albums' }, label: 'All albums' }}
         actions={
           data && (
@@ -115,7 +115,7 @@ export function AlbumDetail({ id }: { id: string }) {
         (data.items.length === 0 ? (
           <p className="empty">This album is empty. Open a photo and choose “Add to album”.</p>
         ) : (
-          <Grid items={data.items} />
+          <Grid items={data.items} large />
         ))}
       {confirming && data && (
         <Sheet title={data.album.name} onClose={() => setConfirming(false)}>

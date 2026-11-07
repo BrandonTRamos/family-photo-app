@@ -77,7 +77,7 @@ export function Timeline({ name }: { name?: string }) {
     <main className="page">
       <NavBar
         title="Family Archive"
-        eyebrow={<p className="greeting">{greeting(name)}</p>}
+        meta={greeting(name)}
         actions={
           <IconButton label="Jump to a year" onClick={() => setJumping(true)}>
             <CalendarIcon />

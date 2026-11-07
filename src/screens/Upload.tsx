@@ -91,7 +91,7 @@ export function Upload() {
 
   return (
     <main className="page">
-      <NavBar title="Add photos" />
+      <NavBar title="Add photos" meta="Share your photos and videos with the family" />
 
       <label className="choose">
         <UploadIcon size={28} />

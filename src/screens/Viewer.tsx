@@ -106,46 +106,50 @@ export function Viewer({ id }: { id: string }) {
         </figure>
       )}
 
-      {item.status === 'ready' && (
-        <div className="action-bar">
-          {mediaUrl && (
-            <button type="button" className="action" onClick={() => void share(mediaUrl, item.kind)}>
-              <span className="action-icon">
-                <ShareIcon />
+      <div className="photo-meta">
+        <span className="avatar" aria-hidden="true">
+          {item.addedBy.trim().charAt(0).toUpperCase()}
+        </span>
+        <div>
+          <p className="who">{item.addedBy}</p>
+          <p className="when">{item.capture ? fullDate(item.capture.date) : 'No date yet'}</p>
+        </div>
+      </div>
+
+      {item.albums.length > 0 && (
+        <div className="list-group">
+          {item.albums.map((a) => (
+            <a key={a.id} className="list-row" href={href({ name: 'album', id: a.id })}>
+              <span>
+                <span className="muted">Album · </span>
+                {a.name}
               </span>
-              Share
-            </button>
-          )}
-          <button type="button" className="action" onClick={() => setAlbumSheet(true)}>
-            <span className="action-icon">
-              <AlbumAddIcon />
-            </span>
-            Add to album
-          </button>
-          {item.canDelete && (
-            <button type="button" className="action danger" onClick={() => setConfirmDelete(true)}>
-              <span className="action-icon">
-                <TrashIcon />
-              </span>
-              Delete
-            </button>
-          )}
+              <ChevronIcon />
+            </a>
+          ))}
         </div>
       )}
 
-      <div className="card">
-        <h1 className="full-date">{item.capture ? fullDate(item.capture.date) : 'No date yet'}</h1>
-        <p className="subtitle">Added by {item.addedBy}</p>
-        {item.albums.map((a) => (
-          <a key={a.id} className="list-row inset" href={href({ name: 'album', id: a.id })}>
-            <span>
-              <span className="muted">Album · </span>
-              {a.name}
-            </span>
-            <ChevronIcon />
-          </a>
-        ))}
-      </div>
+      {item.status === 'ready' && (
+        <nav className="action-pill" aria-label="Photo actions">
+          {mediaUrl && (
+            <button type="button" className="pill-action" onClick={() => void share(mediaUrl, item.kind)}>
+              <ShareIcon />
+              Share
+            </button>
+          )}
+          <button type="button" className="pill-action" onClick={() => setAlbumSheet(true)}>
+            <AlbumAddIcon />
+            Album
+          </button>
+          {item.canDelete && (
+            <button type="button" className="pill-action danger" onClick={() => setConfirmDelete(true)}>
+              <TrashIcon />
+              Delete
+            </button>
+          )}
+        </nav>
+      )}
 
       {actionError && <ErrorNotice message={actionError} />}
 

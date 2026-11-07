@@ -1,18 +1,18 @@
-/* Lake house: misty blue paper, elegant serif headings, photos as white-bordered prints. */
+/* Photo-app look: white, photos first with rounded corners, bold system type, flat grey controls, Lake house blue accent. */
 :root {
   --navbar-height: 52px;
-  --paper: #f1f5f7;
-  --paper-deep: #dde7ec;
-  --paper-bar: #f7fafb;
+  --paper: #ffffff;
+  --paper-deep: #f1f2f4;
+  --paper-bar: #ffffff;
   --print: #ffffff;
-  --ink: #1b2a35;
-  --muted: #536572;
-  --rule: #c9d6dd;
+  --ink: #111418;
+  --muted: #6e737a;
+  --rule: #e6e8eb;
   --accent: #2b6a8a;
   --accent-dark: #1d4e67;
   --danger: #b3261e;
-  --serif: 'Instrument Serif', Georgia, serif;
-  --sans: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', system-ui, sans-serif;
+  --serif: var(--sans);
+  --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
   --shadow: 0 1px 2px rgba(27, 42, 53, 0.08), 0 4px 12px rgba(27, 42, 53, 0.1);
   --shadow-lift: 0 2px 4px rgba(27, 42, 53, 0.08), 0 14px 34px rgba(27, 42, 53, 0.16);
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -1394,5 +1394,354 @@ a.icon-button:hover {
   .sheet-backdrop,
   .toast {
     animation: none;
+  }
+}
+
+/* ======== Photo-app look (after Cosmos, Apple Photos): overrides the earlier rules ======== */
+.page-title,
+.large-title .page-title {
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.large-title {
+  margin-top: 0;
+  text-align: center;
+}
+.title-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+.navbar[data-scrolled] {
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 1px 0 var(--rule);
+}
+.navbar-title {
+  font-weight: 600;
+}
+.glass,
+.icon-button.glass {
+  background: var(--paper-deep);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* Photos: borderless, rounded, small gaps. */
+.grid {
+  gap: 4px;
+}
+.grid.large {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.print {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.print:hover {
+  transform: none;
+  box-shadow: none;
+}
+.grid:not(.large) .print {
+  border-radius: 6px;
+}
+.print img {
+  border-radius: inherit;
+}
+.badge {
+  left: 6px;
+  bottom: 6px;
+}
+.ghost-print,
+.ghost-print.large {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.shimmer {
+  background: linear-gradient(100deg, #eceef1 35%, #f7f8f9 50%, #eceef1 65%);
+  background-size: 300% 100%;
+}
+
+/* Latest: a big rounded photo with a caption under it. */
+.hero-print {
+  max-width: 640px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.hero-photo img {
+  border-radius: 18px;
+}
+.hero-photo .badge {
+  left: 12px;
+  bottom: 12px;
+}
+.hero-caption {
+  padding: 10px 2px 0;
+}
+.eyebrow {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.hero-date {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 22px;
+}
+.hero-print.placeholder {
+  padding-bottom: 72px;
+}
+.hero-print.placeholder .shimmer {
+  border-radius: 18px;
+}
+
+/* Timeline headings */
+.month-bar {
+  padding: 10px 20px 8px;
+  background: rgba(255, 255, 255, 0.88);
+}
+.month-bar .month {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+.month-year {
+  font-weight: 400;
+}
+.day {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+/* Compact floating pill at the bottom: icons with small labels. */
+.tabbar {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  grid-template-columns: repeat(4, 76px);
+  padding: 6px 8px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--rule);
+  box-shadow: 0 8px 28px rgba(17, 20, 24, 0.12);
+}
+.tabbar[hidden] {
+  display: none;
+}
+.tab {
+  min-height: 54px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 24px;
+}
+.tab[aria-current='page'] {
+  color: var(--ink);
+  background: var(--paper-deep);
+}
+.tab:not([aria-current='page']) {
+  color: #9a9fa6;
+}
+
+/* Photo page: the photo edge to edge, who and when under it, actions in the pill. */
+.viewer-print {
+  margin: 0 -20px;
+  padding: 0;
+  background: var(--paper-deep);
+  border-radius: 0;
+  box-shadow: none;
+  max-width: none;
+}
+.viewer-print img,
+.viewer-print video {
+  max-height: 72vh;
+  background: var(--paper-deep);
+}
+.photo-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.photo-meta p {
+  margin: 0;
+}
+.photo-meta .who {
+  font-weight: 700;
+}
+.photo-meta .when {
+  color: var(--muted);
+  font-size: 15px;
+}
+.avatar {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 21px;
+  background: linear-gradient(135deg, #bfe0ee, #7fb6d0);
+  color: #fff;
+  font-weight: 700;
+}
+.action-pill {
+  position: fixed;
+  left: 50%;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  backdrop-filter: blur(22px) saturate(1.8);
+  border: 1px solid var(--rule);
+  box-shadow: 0 8px 28px rgba(17, 20, 24, 0.12);
+}
+.pill-action {
+  min-width: 76px;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  border-radius: 24px;
+  background: none;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s var(--ease);
+}
+.pill-action:active {
+  background: var(--paper-deep);
+  transform: scale(0.95);
+}
+.pill-action.danger {
+  color: var(--danger);
+}
+
+/* Cards and lists: flat light grey. */
+.card,
+.list-group {
+  background: var(--paper-deep);
+  box-shadow: none;
+}
+.list-row:active {
+  background: #e6e8eb;
+}
+.list-row + .list-row,
+.list-group > li + li {
+  border-top-color: #e3e5e8;
+}
+.section-title {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 19px;
+}
+.card .full-date {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 20px;
+}
+.chip {
+  background: var(--print);
+  border-color: var(--rule);
+  box-shadow: none;
+}
+.chip-button {
+  background: var(--print);
+}
+.notice {
+  background: var(--paper-deep);
+  border: 0;
+}
+.search-field {
+  background: var(--paper-deep);
+}
+
+/* Albums: rounded covers, bold name. */
+.album-grid {
+  gap: 18px 12px;
+}
+.album-cover {
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: none;
+  background: var(--paper-deep);
+}
+.album-card .name {
+  margin-top: 8px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 17px;
+}
+.album-card.new .album-cover {
+  border: 0;
+  background: var(--paper-deep);
+  border-radius: 14px;
+}
+
+/* Buttons: solid, calm. */
+.button {
+  box-shadow: none;
+}
+.button.secondary {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+.choose {
+  border: 0;
+  background: var(--paper-deep);
+  border-radius: 18px;
+  color: var(--ink);
+}
+.choose svg {
+  color: var(--accent);
+}
+.sheet {
+  background: var(--print);
+}
+.sheet h2 {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 22px;
+}
+.input,
+.select {
+  border: 0;
+  background: var(--paper-deep);
+}
+.input:focus,
+.select:focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+@media (min-width: 900px) {
+  .large-title {
+    text-align: left;
+  }
+  .brand {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 22px;
   }
 }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#eef3f5" />
+    <meta name="theme-color" content="#ffffff" />
     <title>Family Archive</title>
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -13,12 +13,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Instrument+Serif:ital@0;1&display=swap"
-    />
     <style>
       /* Opening splash: a Polaroid develops while the app starts. Shown before any script runs. */
       #splash {
@@ -30,7 +24,7 @@
         align-items: center;
         justify-content: center;
         gap: 22px;
-        background: #f1f5f7;
+        background: #ffffff;
         transition: opacity 0.45s ease;
       }
       #splash.out {
@@ -67,10 +61,11 @@
       }
       #splash p {
         margin: 0;
-        font-family: 'Instrument Serif', Georgia, serif;
-        font-style: italic;
-        font-size: 24px;
-        color: #536572;
+        font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: -0.01em;
+        color: #111418;
         animation: splash-in 0.9s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
       }
       @keyframes splash-in {

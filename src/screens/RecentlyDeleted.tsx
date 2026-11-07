@@ -21,8 +21,11 @@ export function RecentlyDeleted() {
 
   return (
     <main className="page push">
-      <NavBar title="Recently deleted" back={{ route: { name: 'timeline' }, label: 'Back to Timeline' }} />
-      <p className="subtitle">Things you deleted. Each is deleted for good 30 days later; until then you can restore it.</p>
+      <NavBar
+        title="Recently deleted"
+        meta="Restore within 30 days, then they're gone for good"
+        back={{ route: { name: 'timeline' }, label: 'Back to Timeline' }}
+      />
       {(error || actionError) && <ErrorNotice message={(error ?? actionError)!} retry={error ? reload : undefined} />}
       {!data && !error && <Loading />}
       {data && data.items.length === 0 && <p className="empty">Nothing here.</p>}
