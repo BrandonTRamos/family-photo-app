@@ -46,6 +46,11 @@ textarea {
   -webkit-user-select: text;
   user-select: text;
 }
+/* The sign-in library turns on smooth scrolling whenever something has focus; screens should jump, not glide. */
+html,
+html:focus-within {
+  scroll-behavior: auto;
+}
 
 a {
   color: var(--accent);
@@ -2043,4 +2048,42 @@ a.icon-button:hover {
     margin: 16px 0 0;
     border-radius: 28px;
   }
+}
+
+/* ======== Instant photo page: open on the tapped thumbnail, then the sharp photo fades in over it ======== */
+.viewer-print {
+  position: relative;
+  max-height: 72vh;
+  overflow: hidden;
+}
+.viewer-print .open-full {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+}
+.viewer-print .open-full img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: transparent;
+  animation: photo-in 0.3s var(--ease);
+}
+.viewer-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  filter: blur(6px);
+  transform: scale(1.04);
+}
+.viewer-placeholder.under {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+/* ======== Long Timelines: the phone skips drawing months that are off screen ======== */
+.month-section {
+  content-visibility: auto;
 }

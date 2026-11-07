@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PHOTO_TYPES, VIDEO_TYPES } from '../../core/api-types';
-import { ErrorNotice, NavBar, useApi, useLoad } from '../components';
+import { ErrorNotice, NavBar, useApi, useCached } from '../components';
 import { duration, shortDate } from '../format';
 import { CloseIcon, SparkleIcon, UploadIcon } from '../icons';
 import { href } from '../router';
@@ -27,7 +27,7 @@ const ACCEPT = [...PHOTO_TYPES, ...VIDEO_TYPES].join(',');
 export function Upload() {
   const api = useApi();
   const session = useMemo(() => new UploadSession(api), [api]);
-  const albums = useLoad(() => api.albums(), []);
+  const albums = useCached('albums', () => api.albums());
   const [files, setFiles] = useState<Selected[]>([]);
   const [albumId, setAlbumId] = useState('');
   const [busy, setBusy] = useState(false);

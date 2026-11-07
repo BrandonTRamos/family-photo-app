@@ -22,6 +22,7 @@ const archive = new ArchiveResources(stack, 'Archive', {
 backend.addOutput({
   custom: {
     apiUrl: archive.apiUrl,
+    mediaDomain: archive.mediaDomain,
     region: stack.region,
   },
 });

@@ -122,9 +122,15 @@
       <p>Family Archive</p>
     </div>
     <script>
-      // Fade the splash out once the app says it is ready, after at least one develop, or after 12s regardless.
+      // Fade the splash out once the app says it is ready (after one full develop on a first visit), or after 12s regardless.
       (function () {
         var start = Date.now();
+        // A returning visit with the Timeline remembered goes straight in: no minimum show time.
+        var minimum = 1500;
+        try {
+          var t = JSON.parse(localStorage.getItem('fa1:timeline') || 'null');
+          if (t && Date.now() - t.data.issuedAt < 45 * 60 * 1000) minimum = 0;
+        } catch (e) {}
         function hide() {
           var s = document.getElementById('splash');
           if (!s || s.classList.contains('out')) return;
@@ -132,7 +138,7 @@
           setTimeout(function () { s.remove(); }, 500);
         }
         window.addEventListener('app-ready', function () {
-          setTimeout(hide, Math.max(0, 1500 - (Date.now() - start)));
+          setTimeout(hide, Math.max(0, minimum - (Date.now() - start)));
         });
         setTimeout(hide, 12000);
       })();

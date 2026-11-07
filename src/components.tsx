@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { fetchOnce, readCache, rememberThumb, writeCache } from './cache';
 import type { ItemSummaryDto } from '../core/api-types';
 import type { ApiClient } from './api';
 import { duration, durationWords, shortDate } from './format';
@@ -39,20 +40,70 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]): {
   return { data, error, reload: () => setTick((t) => t + 1), set: setData };
 }
 
+/**
+ * Like useLoad, but shows what was loaded before straight away (from the cache) and refreshes in the background.
+ * An error is shown only when there is nothing to show instead.
+ */
+export function useCached<T>(key: string, load: () => Promise<T>): {
+  data: T | undefined;
+  error: string | undefined;
+  reload: () => void;
+  set: (value: T) => void;
+} {
+  const [data, setData] = useState<T | undefined>(() => readCache<T>(key));
+  const [error, setError] = useState<string>();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    const cached = readCache<T>(key);
+    setData(cached);
+    setError(undefined);
+    fetchOnce(key, load)
+      .then((d) => live && setData(d))
+      .catch((e: Error) => live && !cached && setError(e.message));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, tick]);
+  return {
+    data,
+    error,
+    reload: () => setTick((t) => t + 1),
+    set: (value: T) => {
+      writeCache(key, value);
+      setData(value);
+    },
+  };
+}
+
+/** Starts loading a photo's page as the finger touches its tile, so it is often ready by the time it opens. */
+export function prefetchItem(api: ApiClient, id: string): void {
+  if (!readCache(`item:${id}`)) fetchOnce(`item:${id}`, () => api.item(id)).catch(() => undefined);
+}
+
 export function Print({ item }: { item: ItemSummaryDto }) {
-  const [loaded, setLoaded] = useState(false);
+  const api = useApi();
+  // 'cached': already downloaded, show at once; 'fresh': just arrived, fade in.
+  const [loaded, setLoaded] = useState<false | 'cached' | 'fresh'>(false);
+  rememberThumb(item.id, item.thumbUrl);
   const when = item.capture ? shortDate(item.capture.date) : 'no date';
   const label =
     item.kind === 'video' ? `Video, ${durationWords(item.durationMs)}, ${when}` : `Photo, ${when}`;
   return (
-    <a className="print" href={href({ name: 'item', id: item.id })} aria-label={label}>
+    <a
+      className="print"
+      href={href({ name: 'item', id: item.id })}
+      aria-label={label}
+      onPointerDown={() => prefetchItem(api, item.id)}
+    >
       <img
         src={item.thumbUrl}
         alt=""
         loading="lazy"
-        className={loaded ? 'loaded' : 'shimmer'}
-        ref={(img) => img?.complete && img.naturalWidth > 0 && !loaded && setLoaded(true)}
-        onLoad={() => setLoaded(true)}
+        className={loaded === 'fresh' ? 'loaded' : loaded ? undefined : 'shimmer'}
+        ref={(img) => img?.complete && img.naturalWidth > 0 && !loaded && setLoaded('cached')}
+        onLoad={() => setLoaded((l) => l || 'fresh')}
       />
       {item.kind === 'video' && (
         <span className="badge">

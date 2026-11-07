@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { UndatedDto } from '../../core/api-types';
-import { ErrorNotice, Grid, Loading, NavBar, useApi, useLoad } from '../components';
+import { ErrorNotice, Grid, Loading, NavBar, useApi, useCached } from '../components';
 
 export function Undated() {
   const api = useApi();
-  const { data, error, reload, set } = useLoad<UndatedDto>(() => api.undated(), []);
+  const { data, error, reload, set } = useCached<UndatedDto>('undated', () => api.undated());
   const [busy, setBusy] = useState(false);
 
   async function more() {

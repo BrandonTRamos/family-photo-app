@@ -33,6 +33,8 @@ export interface ArchiveResourcesProps {
 
 export class ArchiveResources extends Construct {
   readonly apiUrl: string;
+  /** Where photos and videos are served from; the app connects to it early. */
+  readonly mediaDomain: string;
 
   constructor(scope: Construct, id: string, props: ArchiveResourcesProps) {
     super(scope, id);
@@ -165,6 +167,8 @@ export class ArchiveResources extends Construct {
         responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
       },
     });
+
+    this.mediaDomain = cdn.distributionDomainName;
 
     // ---- functions ----
     const environment = {

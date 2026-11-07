@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto, TimelineDto, TimelineMonthDto } from '../../core/api-types';
 import { ErrorNotice, Grid, IconButton, Loading, NavBar, Sheet, useApi } from '../components';
 import { dayHeading, greeting, items, monthName, shortDate } from '../format';
 import { CalendarIcon, ChevronIcon, PlayIcon } from '../icons';
 import { takeFlash } from '../flash';
+import { fetchOnce, readCache, writeCache } from '../cache';
+import type { CachedTimeline } from '../cached-api';
 import { href } from '../router';
 
 /** Pages can split a month or day; join them back together. */
@@ -24,34 +26,67 @@ function merge(into: TimelineMonthDto[], more: TimelineMonthDto[]): TimelineMont
   return out;
 }
 
+/** Remembered Timelines older than this may hold expired photo links. */
+const TIMELINE_MAX_AGE_MS = 45 * 60 * 1000;
+
+function rememberedTimeline(): CachedTimeline | undefined {
+  const t = readCache<CachedTimeline>('timeline');
+  return t && Date.now() - t.issuedAt < TIMELINE_MAX_AGE_MS ? t : undefined;
+}
+
+const idsOf = (months: TimelineMonthDto[]) => months.flatMap((m) => m.days.flatMap((d) => d.items.map((i) => i.id)));
+
 export function Timeline({ name }: { name?: string }) {
   const api = useApi();
-  const [page, setPage] = useState<TimelineDto>();
-  const [months, setMonths] = useState<TimelineMonthDto[]>([]);
+  // Show the Timeline as last seen at once, then check quietly for anything new.
+  const [remembered] = useState(rememberedTimeline);
+  const [page, setPage] = useState<TimelineDto | undefined>(
+    remembered && { months: remembered.months, cursor: remembered.cursor, undatedCount: remembered.undatedCount },
+  );
+  const [months, setMonths] = useState<TimelineMonthDto[]>(remembered?.months ?? []);
+  const head = useRef<string[]>(remembered?.head ?? []);
+  const issuedAt = useRef(remembered?.issuedAt ?? Date.now());
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [year, setYear] = useState('');
   const [jumpedTo, setJumpedTo] = useState<number>();
   const [flash, setFlash] = useState(takeFlash);
 
-  async function load(opts: { cursor?: string; year?: number; replace?: boolean }) {
-    setBusy(true);
+  async function load(opts: { cursor?: string; year?: number; replace?: boolean; quietly?: boolean }) {
+    if (!opts.quietly) setBusy(true);
     setError(undefined);
     try {
       const res = await api.timeline({ cursor: opts.cursor, year: opts.year });
+      const first = !opts.cursor && opts.year === undefined;
+      // Checking a remembered Timeline: nothing new at the top means keep everything already loaded.
+      if (opts.quietly && sameIds(idsOf(res.months), head.current)) return;
+      if (first) head.current = idsOf(res.months);
+      if (opts.replace) issuedAt.current = Date.now();
       setPage(res);
       setMonths((prev) => (opts.replace ? res.months : merge(prev, res.months)));
     } catch (e) {
-      setError((e as Error).message);
+      if (!opts.quietly) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (!opts.quietly) setBusy(false);
     }
   }
 
   useEffect(() => {
-    void load({ replace: true });
+    void load({ replace: true, quietly: !!remembered });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Remember what is shown (not a jumped-to year) for next time.
+  useEffect(() => {
+    if (jumpedTo !== undefined || !page) return;
+    writeCache<CachedTimeline>('timeline', {
+      months,
+      cursor: page.cursor,
+      undatedCount: page.undatedCount,
+      head: head.current,
+      issuedAt: issuedAt.current,
+    });
+  }, [months, page, jumpedTo]);
 
   async function undoDelete(id: string) {
     try {
@@ -129,7 +164,12 @@ export function Timeline({ name }: { name?: string }) {
       )}
 
       {months.map((m) => (
-        <section key={m.month} id={`m-${m.month}`} className="month-section" aria-label={`${monthName(m.month)} ${m.month.slice(0, 4)}`}>
+        <section
+          key={m.month}
+          id={`m-${m.month}`}
+          className="month-section"
+          style={{ containIntrinsicSize: `auto ${estimatedHeight(m)}px` }}
+          aria-label={`${monthName(m.month)} ${m.month.slice(0, 4)}`}>
           <h2 className="month-bar">
             <span className="month">
               {monthName(m.month)} <span className="month-year">{m.month.slice(0, 4)}</span>
@@ -202,11 +242,12 @@ export function Timeline({ name }: { name?: string }) {
  */
 function Hero({ id, greeting }: { id: string; greeting: string }) {
   const api = useApi();
-  const [item, setItem] = useState<ItemDetailDto>();
-  const [loaded, setLoaded] = useState(false);
+  const [item, setItem] = useState(() => readCache<ItemDetailDto>(`item:${id}`));
+  const [loaded, setLoaded] = useState<false | 'cached' | 'fresh'>(false);
   useEffect(() => {
     let live = true;
-    api.item(id).then((it) => live && setItem(it), () => undefined); // decoration only: skip it on error
+    // Decoration only: on an error, keep what is shown.
+    fetchOnce(`item:${id}`, () => api.item(id)).then((it) => live && setItem(it), () => undefined);
     return () => {
       live = false;
     };
@@ -215,7 +256,13 @@ function Hero({ id, greeting }: { id: string; greeting: string }) {
   return (
     <a className="hero" href={href({ name: 'item', id })} aria-label="Open the latest photo">
       {src ? (
-        <img src={src} alt="" className={loaded ? 'loaded' : undefined} onLoad={() => setLoaded(true)} />
+        <img
+          src={src}
+          alt=""
+          className={loaded === 'fresh' ? 'loaded' : undefined}
+          ref={(img) => img?.complete && img.naturalWidth > 0 && !loaded && setLoaded('cached')}
+          onLoad={() => setLoaded((l) => l || 'fresh')}
+        />
       ) : (
         <span className="hero-blank shimmer" />
       )}
@@ -259,4 +306,19 @@ function MonthCards({ months }: { months: TimelineMonthDto[] }) {
       </div>
     </section>
   );
+}
+
+function sameIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i]);
+}
+
+/**
+ * Roughly how tall a month is, so the phone can skip drawing it while off screen (content-visibility) and the
+ * scroll bar and scroll restoring stay about right before it is drawn.
+ */
+function estimatedHeight(m: TimelineMonthDto): number {
+  const width = Math.min(window.innerWidth, 1200) - 40;
+  const tile = (width - 8) / 3;
+  const days = m.days.reduce((h, d) => h + 30 + Math.ceil(d.items.length / 3) * (tile + 4), 0);
+  return Math.round(48 + days + m.days.length * 12);
 }

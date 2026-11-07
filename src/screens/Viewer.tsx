@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto } from '../../core/api-types';
-import { ErrorNotice, Loading, NavBar, Sheet, useApi, useLoad } from '../components';
+import { ErrorNotice, Loading, NavBar, Sheet, useApi, useCached } from '../components';
 import { fullDate, shortDate } from '../format';
 import { AlbumAddIcon, ChevronIcon, CloseIcon, PlusIcon, ShareIcon, TrashIcon } from '../icons';
 import { setFlash } from '../flash';
+import { thumbFor } from '../cache';
 import { href, navigate } from '../router';
 
 export function Viewer({ id }: { id: string }) {
   const api = useApi();
-  const { data: item, error, reload, set } = useLoad(() => api.item(id), [id]);
+  const { data: item, error, reload, set } = useCached(`item:${id}`, () => api.item(id));
   const [actionError, setActionError] = useState<string>();
   const [adding, setAdding] = useState(false);
   const [editingTags, setEditingTags] = useState(false);
+  const [displayLoaded, setDisplayLoaded] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [date, setDate] = useState('');
   const [albumSheet, setAlbumSheet] = useState(false);
@@ -47,7 +49,22 @@ export function Viewer({ id }: { id: string }) {
   const nav = (title: string) => <NavBar large={false} back={back} title={title} />;
 
   if (error) return <main className="page push">{nav('')}<ErrorNotice message={error} retry={reload} /></main>;
-  if (!item) return <main className="page push">{nav('')}<Loading variant="photo" /></main>;
+  if (!item) {
+    // Open on the tile that was tapped (already downloaded) while the rest arrives.
+    const thumb = thumbFor(id);
+    return (
+      <main className="page push">
+        {nav('')}
+        {thumb ? (
+          <figure className="viewer-print">
+            <img className="viewer-placeholder" src={thumb} alt="" />
+          </figure>
+        ) : (
+          <Loading variant="photo" />
+        )}
+      </main>
+    );
+  }
 
   const mediaUrl = item.kind === 'video' ? item.videoUrl : item.displayUrl;
   const editing = editingTags && item.tags.length > 0;
@@ -84,7 +101,13 @@ export function Viewer({ id }: { id: string }) {
       )}
 
       {(item.status === 'ready' || item.status === 'deleted') && (
-        <figure className="viewer-print">
+        <figure
+          className="viewer-print"
+          style={item.width && item.height ? { aspectRatio: `${item.width} / ${item.height}` } : undefined}
+        >
+          {item.kind === 'photo' && (item.thumbUrl ?? thumbFor(id)) && !displayLoaded && (
+            <img className="viewer-placeholder under" src={item.thumbUrl ?? thumbFor(id)} alt="" aria-hidden="true" />
+          )}
           {item.kind === 'video' ? (
             <video
               controls
@@ -102,7 +125,12 @@ export function Viewer({ id }: { id: string }) {
             />
           ) : (
             <button type="button" className="open-full" aria-label="Show full screen" onClick={() => setFullScreen(true)}>
-              <img src={item.displayUrl} alt={item.tags.length ? `Photo: ${item.tags.map((t) => t.label).join(', ')}` : 'Photo'} />
+              <img
+                src={item.displayUrl}
+                alt={item.tags.length ? `Photo: ${item.tags.map((t) => t.label).join(', ')}` : 'Photo'}
+                ref={(img) => img?.complete && img.naturalWidth > 0 && !displayLoaded && setDisplayLoaded(true)}
+                onLoad={() => setDisplayLoaded(true)}
+              />
             </button>
           )}
         </figure>
@@ -311,7 +339,7 @@ function FullScreen({ src, onClose }: { src: string; onClose: () => void }) {
 
 function AddToAlbum(props: { itemId: string; inAlbums: string[]; onClose: () => void; onAdded: () => void }) {
   const api = useApi();
-  const { data, error } = useLoad(() => api.albums(), []);
+  const { data, error } = useCached('albums', () => api.albums());
   const [name, setName] = useState('');
   const [failure, setFailure] = useState<string>();
 

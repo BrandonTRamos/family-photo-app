@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { ErrorNotice, Grid, IconButton, Loading, NavBar, Sheet, useApi, useLoad } from '../components';
+import { ErrorNotice, Grid, IconButton, Loading, NavBar, Sheet, useApi, useCached } from '../components';
 import { items } from '../format';
 import { MoreIcon, PlusIcon } from '../icons';
 import { href, navigate } from '../router';
 
 export function Albums() {
   const api = useApi();
-  const { data, error, reload } = useLoad(() => api.albums(), []);
+  const { data, error, reload } = useCached('albums', () => api.albums());
   const [name, setName] = useState('');
   const [failure, setFailure] = useState<string>();
   const [creating, setCreating] = useState(false);
@@ -81,7 +81,7 @@ export function Albums() {
 
 export function AlbumDetail({ id }: { id: string }) {
   const api = useApi();
-  const { data, error, reload } = useLoad(() => api.album(id), [id]);
+  const { data, error, reload } = useCached(`album:${id}`, () => api.album(id));
   const [confirming, setConfirming] = useState(false);
   const [failure, setFailure] = useState<string>();
 
