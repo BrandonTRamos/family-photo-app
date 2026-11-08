@@ -87,6 +87,24 @@ export const ShareIcon = () => (
     <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
   </svg>
 );
+export const DownloadIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" {...stroke}>
+    <path d="M12 4v11M7 11l5 5 5-5" />
+    <path d="M5 20h14" />
+  </svg>
+);
+export const PhotosIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" {...stroke}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <circle cx="9" cy="10" r="1.6" />
+    <path d="m4 18 5-5 4 4 3-3 4 4" />
+  </svg>
+);
+export const FolderIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" {...stroke}>
+    <path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
+  </svg>
+);
 export const TrashIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" {...stroke}>
     <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3" />
