@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto } from '../../core/api-types';
 import { ErrorNotice, Loading, NavBar, Sheet, useApi, useCached } from '../components';
 import { fullDate, shortDate } from '../format';
-import { AlbumAddIcon, ChevronIcon, CloseIcon, PlusIcon, ShareIcon, TrashIcon } from '../icons';
+import { AlbumAddIcon, ChevronIcon, CloseIcon, DownloadIcon, FolderIcon, PhotosIcon, PlusIcon, ShareIcon, TrashIcon } from '../icons';
+import { canSaveToPhotos, saveToFiles, saveToPhotos } from '../download';
 import { setFlash } from '../flash';
 import { thumbFor } from '../cache';
 import { href, navigate } from '../router';
@@ -20,6 +21,7 @@ export function Viewer({ id }: { id: string }) {
   const [videoRetried, setVideoRetried] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
+  const [saveSheet, setSaveSheet] = useState(false);
 
   async function act(run: () => Promise<ItemDetailDto>) {
     setActionError(undefined);
@@ -237,6 +239,12 @@ export function Viewer({ id }: { id: string }) {
               Share
             </button>
           )}
+          {mediaUrl && (
+            <button type="button" className="pill-action" onClick={() => setSaveSheet(true)}>
+              <DownloadIcon />
+              Save
+            </button>
+          )}
           <button type="button" className="pill-action" onClick={() => setAlbumSheet(true)}>
             <AlbumAddIcon />
             Album
@@ -288,6 +296,36 @@ export function Viewer({ id }: { id: string }) {
           >
             Delete
           </button>
+        </Sheet>
+      )}
+
+      {saveSheet && mediaUrl && (
+        <Sheet title={`Save this ${item.kind}`} onClose={() => setSaveSheet(false)}>
+          {[
+            { label: 'Save to Photos', hint: 'Choose Save Image or Save Video', icon: <PhotosIcon />, run: saveToPhotos, show: canSaveToPhotos() },
+            { label: 'Save to Files', hint: 'Downloads folder', icon: <FolderIcon />, run: saveToFiles, show: true },
+          ]
+            .filter((o) => o.show)
+            .map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                className="list-button"
+                onClick={async () => {
+                  setSaveSheet(false);
+                  setActionError(undefined);
+                  try {
+                    await o.run({ url: mediaUrl, kind: item.kind, name: item.capture?.date ?? id });
+                  } catch (e) {
+                    setActionError((e as Error).message);
+                  }
+                }}
+              >
+                {o.icon}
+                <span style={{ flex: 1 }}>{o.label}</span>
+                <span className="muted">{o.hint}</span>
+              </button>
+            ))}
         </Sheet>
       )}
 

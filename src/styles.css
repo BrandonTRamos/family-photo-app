@@ -1620,7 +1620,7 @@ a.icon-button:hover {
   box-shadow: 0 8px 28px rgba(17, 20, 24, 0.12);
 }
 .pill-action {
-  min-width: 76px;
+  min-width: 68px;
   min-height: 54px;
   display: flex;
   flex-direction: column;
