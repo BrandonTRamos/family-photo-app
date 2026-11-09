@@ -1,5 +1,7 @@
 # AGENTS.md
 
+This file (`AGENTS.md`) is the source of truth; `CLAUDE.md` only imports it, so edit this file, not that one.
+
 ## Communication
 
 All messages to the user should be concise. Sacrifice grammar for concision.
