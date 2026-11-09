@@ -11,6 +11,7 @@ All messages to the user should be concise. Sacrifice grammar for concision.
 - `main` is what Amplify deploys; every push to it goes live.
 - Work on a branch, then fast-forward `main` to it and push. Do this only after the user approves that specific push in chat.
 - Never force-push `main`.
+- Whenever opening a PR that includes infrastructure changes, tell the user what infrastructure is being added and its cost implications, including any uncertainty in cost estimates.
 
 ## Agent skills
 
