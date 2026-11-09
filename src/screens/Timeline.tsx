@@ -268,7 +268,7 @@ function Hero({ id, greeting }: { id: string; greeting: string }) {
       )}
       <span className="hero-text">
         <span className="hero-greeting">{greeting}</span>
-        <span className="hero-title">Family Archive</span>
+        <span className="hero-title">Family Photos</span>
         {item && (
           <span className="hero-latest">
             {item.kind === 'video' && <PlayIcon />}
