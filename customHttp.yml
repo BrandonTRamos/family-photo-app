@@ -1,0 +1,14 @@
+customHeaders:
+  # Revalidate the service worker and shell so deployments reach installed apps.
+  - pattern: '/sw.js'
+    headers:
+      - key: Cache-Control
+        value: 'no-cache'
+  - pattern: '/index.html'
+    headers:
+      - key: Cache-Control
+        value: 'no-cache'
+  - pattern: '/manifest.json'
+    headers:
+      - key: Cache-Control
+        value: 'no-cache'

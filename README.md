@@ -7,6 +7,7 @@ A private, shared place for the family's photos and videos. Browse by a Timeline
 - `core/`: domain types, Item rules (`item.ts`: lifecycle, placement, Tags), use cases (`archive.ts`), processing and AI tagging (`pipeline.ts`), Lambda handlers, and adapters (DynamoDB, S3, SQS, Bedrock, MediaConvert, sharp, exifr). `core/api-types.ts` is the HTTP contract shared with the web app.
 - `amplify/`: Amplify Gen 2 backend. Auth via `defineAuth`; everything else is CDK in `archive-resources.ts`.
 - `src/`: React web app in the Lake house design. Screens show what was loaded before at once and refresh in the background (`src/cache.ts`, kept honest by `src/cached-api.ts`); each screen keeps its scroll position (`src/scroll.ts`). Runs in demo mode with sample photos when no backend is configured: the real Archive and HTTP API run in the page on in-memory adapters (`src/demo.ts`), with media processing stood in for.
+- Production builds cache the app shell with a service worker. Like Command Center, a new deploy shows “A new version is available.” with a Refresh button; checks run every 30 minutes and on returning to the app. The first deployment adds this support; prompts begin with the following deployment. Development mode does not register a worker.
 - `tests/`: tests through the HTTP API, with the workers running behind it.
 
 ## Develop

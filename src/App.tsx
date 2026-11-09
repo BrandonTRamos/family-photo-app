@@ -5,6 +5,7 @@ import { href, useRoute } from './router';
 import { useScrollMemory } from './scroll';
 import { appReady } from './splash';
 import { keepCacheFresh } from './cached-api';
+import { UpdateBanner } from './UpdateBanner';
 import { AlbumDetail, Albums } from './screens/Albums';
 import { Search } from './screens/Search';
 import { Timeline } from './screens/Timeline';
@@ -18,6 +19,7 @@ export function App({ api, onSignOut, demo }: { api: ApiClient; onSignOut?: () =
   return (
     <ApiContext.Provider value={value}>
       <MembershipGate onSignOut={onSignOut} demo={demo} />
+      <UpdateBanner />
     </ApiContext.Provider>
   );
 }

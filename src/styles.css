@@ -80,6 +80,44 @@ select {
   white-space: nowrap;
 }
 
+/* New deployments wait for Refresh. Clear the mobile tab bar and stay below sheets. */
+.update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tab-height) + 14px + env(safe-area-inset-bottom));
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 6px 6px 6px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--print);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+  transform: translateX(-50%);
+}
+.update-banner button {
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--print);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (min-width: 900px) {
+  .update-banner {
+    bottom: 24px;
+  }
+}
+
 /* ---- layout ---- */
 .app {
   min-height: 100vh;
