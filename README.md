@@ -30,6 +30,8 @@ npm run dev       # web app; demo mode until amplify_outputs.json exists
 
 ## Defaults chosen (change as needed)
 
+Cost tracking: backend resources and the main deployment's Hosting app receive `project=family-photos` automatically. Override with the app-level `COST_TAG` environment variable if needed. Activate `project` in Billing to report by project; see [setup, costs and verification](docs/cost-tags.md).
+
 - Region us-east-1 (inference profile above assumes a US region).
 - Uploads: JPEG, PNG, WebP, HEIC/HEIF photos up to 50 MB; MP4/MOV videos up to 2 GB. Large files upload in 16 MB parts.
 - Staging originals are deleted after a verified publish; failed or abandoned ones expire after 30 days.

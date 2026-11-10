@@ -13,6 +13,10 @@ All messages to the user should be concise. Sacrifice grammar for concision.
 - Never force-push `main`.
 - Whenever opening a PR that includes infrastructure changes, tell the user what infrastructure is being added and its cost implications, including any uncertainty in cost estimates.
 
+## Cost tracking
+
+- `amplify/cost-tags.ts` applies `project=COST_TAG` (default `family-photos`) to taggable backend resources, including nested Archive resources. Main deployments tag the current Hosting app through a restricted deployment-only custom resource; previews/sandboxes leave Hosting alone. Keep COST_TAG app-wide across branches. Setup, costs and historical limits: [docs/cost-tags.md](docs/cost-tags.md).
+
 ## Agent skills
 
 ### Issue tracker
