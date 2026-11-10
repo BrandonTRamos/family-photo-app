@@ -96,7 +96,7 @@ export async function createHarness(config: Partial<Config> = {}) {
 
   type UploadInput = { name: string; type: string; bytes: Buffer; captureDate?: string };
   const asFiles = (files: UploadInput[]) =>
-    files.map((f, i) => ({ key: String(i), file: new File([f.bytes], f.name, { type: f.type }), captureDate: f.captureDate }));
+    files.map((f, i) => ({ key: String(i), file: new File([Uint8Array.from(f.bytes)], f.name, { type: f.type }), captureDate: f.captureDate }));
 
   /** An Upload screen session: sending the same files again retries them. */
   function uploader(user: User) {
