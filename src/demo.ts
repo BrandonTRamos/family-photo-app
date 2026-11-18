@@ -15,6 +15,8 @@ const STORAGE = 'https://storage.demo.invalid/';
 const you: Caller = { sub: 'demo-you', name: 'Sam', groups: ['family'] };
 const rosa: Person = { id: 'demo-rosa', name: 'Aunt Rosa' };
 const dan: Person = { id: 'demo-dan', name: 'Uncle Dan' };
+/** Every sample picture in public/demo is drawn this size. */
+const SAMPLE_SIZE = { width: 400, height: 300 };
 
 export function createDemoApi(): ApiClient {
   const repo = new MemoryRepository();
@@ -91,7 +93,7 @@ async function seed(repo: Repository, blobs: BrowserBlobStore): Promise<void> {
     });
     const media: ItemMedia =
       kind === 'photo'
-        ? { thumbKey: key, displayKey: key, checksums: {} }
+        ? { thumbKey: key, displayKey: key, ...SAMPLE_SIZE, checksums: {} }
         : { thumbKey: key, posterKey: key, durationMs: extra.durationMs, checksums: {} };
     it = publish(markUploaded(it)!, when && { ...when, source: 'file' }, media)!;
     if (kind === 'photo') it = applyAiTags(it, aiTags, 'demo', createdAt)!;

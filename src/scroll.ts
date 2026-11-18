@@ -41,6 +41,11 @@ export function useScrollMemory(key: string): void {
   }, [key]);
 }
 
+/** The screen about to replace this one (swiping on to the next photo) starts where this one is, not at its top. */
+export function carryScrollTo(key: string): void {
+  positions.set(key, window.scrollY);
+}
+
 /** Jump, never glide: restoring a position should look like the screen never left. */
 function jump(top: number): void {
   window.scrollTo({ top, behavior: 'instant' });

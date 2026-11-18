@@ -76,6 +76,9 @@ describe('a photo on the Timeline', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ status: 'ready', kind: 'photo', addedBy: 'Aunt Rosa', width: 400, height: 600 });
     expect(res.body.capture).toEqual({ date: '2026-08-16', time: '10:00:00', source: 'file' });
+    // Lists say how big the picture is too, so its page can be laid out before the item itself is asked for.
+    const timeline = await h.get<TimelineDto>(dan, '/timeline');
+    expect(timeline.body.months[0].days[0].items[0]).toMatchObject({ id: ids[0], width: 400, height: 600 });
 
     for (const object of h.media.objects.values()) {
       expect(await exifr.gps(object.body).catch(() => undefined)).toBeUndefined();

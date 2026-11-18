@@ -376,6 +376,8 @@ export class Archive {
       id: item.id,
       kind: item.kind,
       thumbUrl: await this.url(item.media!.thumbKey),
+      width: item.media?.width,
+      height: item.media?.height,
       durationMs: item.media?.durationMs,
       capture: item.capture ? { date: item.capture.date, time: item.capture.time, source: item.capture.source } : undefined,
     };
