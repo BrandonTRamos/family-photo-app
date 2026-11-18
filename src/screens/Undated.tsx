@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { UndatedDto } from '../../core/api-types';
 import { ErrorNotice, Grid, Loading, NavBar, useApi, useCached } from '../components';
+import { showingPhotos } from '../photo-list';
 
 export function Undated() {
   const api = useApi();
   const { data, error, reload, set } = useCached<UndatedDto>('undated', () => api.undated());
   const [busy, setBusy] = useState(false);
+
+  // A photo opened from here can be swiped on to the next, in this order.
+  useEffect(() => {
+    if (data) showingPhotos({ name: 'undated' }, data.items);
+  }, [data]);
 
   async function more() {
     if (!data?.cursor) return;

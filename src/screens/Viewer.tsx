@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ItemDetailDto } from '../../core/api-types';
 import { ErrorNotice, Loading, NavBar, Sheet, useApi, useCached } from '../components';
+import { PhotoStrip } from './PhotoStrip';
 import { fullDate, shortDate } from '../format';
 import { AlbumAddIcon, ChevronIcon, CloseIcon, DownloadIcon, FolderIcon, PhotosIcon, PlusIcon, ShareIcon, TrashIcon } from '../icons';
 import { canSaveToPhotos, saveToFiles, saveToPhotos } from '../download';
 import { setFlash } from '../flash';
-import { thumbFor } from '../cache';
-import { cameFrom, href, navigate, type Route } from '../router';
+import { photosAround } from '../photo-list';
+import { cameFrom, href, navigate, replaceRoute, type Route } from '../router';
+import { carryScrollTo } from '../scroll';
 
 const screenNames: Record<Route['name'], string> = {
   timeline: 'Timeline',
@@ -22,16 +24,55 @@ const screenNames: Record<Route['name'], string> = {
 export function Viewer({ id }: { id: string }) {
   const api = useApi();
   const { data: item, error, reload, set } = useCached(`item:${id}`, () => api.item(id));
+  const [fullScreen, setFullScreen] = useState(false);
+  const from = cameFrom();
+  const around = photosAround(from, id);
+
+  /** Swiped to another photo: show it in this one's place, so Back still returns to the list. */
+  function move(to: string) {
+    const next: Route = { name: 'item', id: to };
+    carryScrollTo(href(next));
+    replaceRoute(next);
+  }
+
+  const title = !item ? '' : item.capture ? shortDate(item.capture.date) : item.kind === 'video' ? 'Video' : 'Photo';
+  // Nothing to picture while an upload is still being prepared, or after it failed. In a list the strip stays
+  // whatever happens, so there is always a way to swipe on.
+  const pictured = !item || item.status === 'ready' || item.status === 'deleted';
+
+  return (
+    <main className="page push">
+      <NavBar large={false} back={{ route: from, label: `Back to ${screenNames[from.name]}` }} title={title} />
+      {(around || (pictured && !error)) && (
+        <PhotoStrip
+          id={id}
+          item={item}
+          failed={!!error}
+          around={around}
+          onMove={move}
+          onOpenFull={() => setFullScreen(true)}
+          onReload={reload}
+        />
+      )}
+      {error && <ErrorNotice message={error} retry={reload} />}
+      {/* Keyed: tags being edited, open sheets and the like belong to one photo and start afresh on the next. */}
+      {item && <AboutPhoto key={id} item={item} set={set} reload={reload} />}
+      {fullScreen && item?.displayUrl && <FullScreen src={item.displayUrl} onClose={() => setFullScreen(false)} />}
+    </main>
+  );
+}
+
+/** Everything under the picture: who and when, tags, albums, and what can be done with it. */
+function AboutPhoto({ item, set, reload }: { item: ItemDetailDto; set: (item: ItemDetailDto) => void; reload: () => void }) {
+  const api = useApi();
+  const { id } = item;
   const [actionError, setActionError] = useState<string>();
   const [adding, setAdding] = useState(false);
   const [editingTags, setEditingTags] = useState(false);
-  const [displayLoaded, setDisplayLoaded] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [date, setDate] = useState('');
   const [albumSheet, setAlbumSheet] = useState(false);
-  const [videoRetried, setVideoRetried] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [fullScreen, setFullScreen] = useState(false);
   const [saveSheet, setSaveSheet] = useState(false);
 
   async function act(run: () => Promise<ItemDetailDto>) {
@@ -58,35 +99,11 @@ export function Viewer({ id }: { id: string }) {
     await act(() => api.setDate(id, date));
   }
 
-  const from = cameFrom();
-  const back = { route: from, label: `Back to ${screenNames[from.name]}` };
-  const nav = (title: string) => <NavBar large={false} back={back} title={title} />;
-
-  if (error) return <main className="page push">{nav('')}<ErrorNotice message={error} retry={reload} /></main>;
-  if (!item) {
-    // Open on the tile that was tapped (already downloaded) while the rest arrives.
-    const thumb = thumbFor(id);
-    return (
-      <main className="page push">
-        {nav('')}
-        {thumb ? (
-          <figure className="viewer-print">
-            <img className="viewer-placeholder" src={thumb} alt="" />
-          </figure>
-        ) : (
-          <Loading variant="photo" />
-        )}
-      </main>
-    );
-  }
-
   const mediaUrl = item.kind === 'video' ? item.videoUrl : item.displayUrl;
   const editing = editingTags && item.tags.length > 0;
 
   return (
-    <main className="page push">
-      {nav(item.capture ? shortDate(item.capture.date) : item.kind === 'video' ? 'Video' : 'Photo')}
-
+    <>
       {item.status === 'processing' && (
         <p className="notice">
           Still being prepared. It will appear for everyone shortly.{' '}
@@ -112,42 +129,6 @@ export function Viewer({ id }: { id: string }) {
         <p className="notice error" role="alert">
           {item.failureReason ?? 'This upload could not be processed.'} Please try uploading it again.
         </p>
-      )}
-
-      {(item.status === 'ready' || item.status === 'deleted') && (
-        <figure
-          className="viewer-print"
-          style={item.width && item.height ? { aspectRatio: `${item.width} / ${item.height}` } : undefined}
-        >
-          {item.kind === 'photo' && (item.thumbUrl ?? thumbFor(id)) && !displayLoaded && (
-            <img className="viewer-placeholder under" src={item.thumbUrl ?? thumbFor(id)} alt="" aria-hidden="true" />
-          )}
-          {item.kind === 'video' ? (
-            <video
-              controls
-              playsInline
-              preload="metadata"
-              poster={item.posterUrl}
-              src={item.videoUrl}
-              onError={() => {
-                // Signed links expire; fetch a fresh one once.
-                if (!videoRetried) {
-                  setVideoRetried(true);
-                  reload();
-                }
-              }}
-            />
-          ) : (
-            <button type="button" className="open-full" aria-label="Show full screen" onClick={() => setFullScreen(true)}>
-              <img
-                src={item.displayUrl}
-                alt={item.tags.length ? `Photo: ${item.tags.map((t) => t.label).join(', ')}` : 'Photo'}
-                ref={(img) => img?.complete && img.naturalWidth > 0 && !displayLoaded && setDisplayLoaded(true)}
-                onLoad={() => setDisplayLoaded(true)}
-              />
-            </button>
-          )}
-        </figure>
       )}
 
       <div className="photo-meta">
@@ -341,8 +322,6 @@ export function Viewer({ id }: { id: string }) {
         </Sheet>
       )}
 
-      {fullScreen && item.displayUrl && <FullScreen src={item.displayUrl} onClose={() => setFullScreen(false)} />}
-
       {albumSheet && (
         <AddToAlbum
           itemId={id}
@@ -354,7 +333,7 @@ export function Viewer({ id }: { id: string }) {
           }}
         />
       )}
-    </main>
+    </>
   );
 }
 

@@ -150,6 +150,22 @@ select {
     transform: translateX(28px);
   }
 }
+/* Going back, the screen comes in from the other side. <html data-nav> is set by screen-change.ts. */
+@keyframes page-back {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-nav='back'] .page {
+    animation-name: page-back;
+  }
+}
+/* Something else is animating this change (a photo growing from its tile, or the browser's own swipe-back). */
+html[data-nav='off'] .page {
+  animation: none;
+}
 
 .page-title {
   margin: 0;
@@ -2211,4 +2227,86 @@ a.icon-button:hover {
 /* ======== Long Timelines: the phone skips drawing months that are off screen ======== */
 .month-section {
   content-visibility: auto;
+}
+
+/* ======== Swiping from photo to photo (screens/PhotoStrip.tsx) ======== */
+.photo-strip {
+  position: relative;
+  margin: 0 -20px;
+  /* As tall as the photo in view; mid-swipe, PhotoStrip sets a height part-way to the next photo's. */
+  overflow: hidden;
+}
+.strip-track {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  /* Past the first or last photo, nothing else moves (some browsers would go Back). */
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  /* Room underneath for a neighbour taller than the photo in view (none is taller than 72vh), taken straight back
+     out of the layout: the neighbour slides in whole, and the strip is still only as tall as its photo. */
+  padding-bottom: 72vh;
+  margin-bottom: -72vh;
+}
+.strip-track::-webkit-scrollbar {
+  display: none;
+}
+.strip-slide,
+.strip-gap {
+  flex: none;
+}
+.strip-slide {
+  position: relative;
+  width: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+/* Only the photo in view takes up height; its neighbours wait at the top of their own places. */
+.strip-slide:not([data-current]) > * {
+  position: absolute;
+  inset: 0 0 auto;
+}
+.photo-strip .viewer-print {
+  margin: 0;
+}
+.photo-strip .skeleton {
+  margin: 0 20px;
+}
+/* Previous and next, for a mouse. Touch screens swipe. */
+.strip-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  margin-top: -22px;
+  display: none;
+}
+.strip-arrow.before {
+  left: 12px;
+}
+.strip-arrow.after {
+  right: 12px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .strip-arrow {
+    display: inline-flex;
+  }
+}
+
+/* ======== Opening a photo: it grows out of its tile and shrinks back into it (screen-change.ts) ======== */
+.strip-slide[data-current] .viewer-print {
+  view-transition-name: photo;
+}
+::view-transition-group(photo) {
+  animation-duration: 0.34s;
+  animation-timing-function: var(--ease);
+}
+/* A tile is a square cut from the middle of its picture. Both pictures fill the frame as it changes shape,
+   so the photo opens out from the tile instead of stretching. */
+::view-transition-old(photo),
+::view-transition-new(photo) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }

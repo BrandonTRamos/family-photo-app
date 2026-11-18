@@ -13,6 +13,9 @@ export interface ItemSummaryDto {
   id: string;
   kind: ItemKindDto;
   thumbUrl: string;
+  /** The display picture's size, when known (photos), so its page can be laid out before it is asked for. */
+  width?: number;
+  height?: number;
   durationMs?: number;
   capture?: CaptureDateDto;
 }

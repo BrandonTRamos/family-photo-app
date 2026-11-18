@@ -8,6 +8,7 @@ import { fetchOnce, readCache, writeCache } from '../cache';
 import { picturesKept } from '../media-cache';
 import type { ApiClient } from '../api';
 import type { CachedTimeline } from '../cached-api';
+import { showingPhotos } from '../photo-list';
 import { href } from '../router';
 
 /** Pages can split a month or day; join them back together. */
@@ -98,6 +99,11 @@ export function Timeline({ name }: { name?: string }) {
     void load({ replace: true, quietly: !!remembered });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A photo opened from here can be swiped on to the next, in this order.
+  useEffect(() => {
+    showingPhotos({ name: 'timeline' }, months.flatMap((m) => m.days.flatMap((d) => d.items)));
+  }, [months]);
 
   // Remember what is shown (not a jumped-to year) for next time.
   useEffect(() => {

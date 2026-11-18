@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { ErrorNotice, Grid, IconButton, Loading, NavBar, Sheet, useApi, useCached } from '../components';
 import { items } from '../format';
 import { MoreIcon, PlusIcon } from '../icons';
+import { showingPhotos } from '../photo-list';
 import { href, navigate } from '../router';
 
 export function Albums() {
@@ -84,6 +85,11 @@ export function AlbumDetail({ id }: { id: string }) {
   const { data, error, reload } = useCached(`album:${id}`, () => api.album(id));
   const [confirming, setConfirming] = useState(false);
   const [failure, setFailure] = useState<string>();
+
+  // A photo opened from here can be swiped on to the next, in this order.
+  useEffect(() => {
+    if (data) showingPhotos({ name: 'album', id }, data.items);
+  }, [id, data]);
 
   async function remove() {
     try {

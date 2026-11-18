@@ -3,6 +3,7 @@ import type { SearchDto } from '../../core/api-types';
 import { ErrorNotice, Grid, NavBar, useApi } from '../components';
 import { readCache, writeCache } from '../cache';
 import { ClearIcon, SearchIcon } from '../icons';
+import { showingPhotos } from '../photo-list';
 import { href } from '../router';
 
 /** Wait this long after the last keystroke before searching. */
@@ -41,7 +42,7 @@ export function Search({ tags }: { tags: string[] }) {
 
   useEffect(() => {
     const request = ++latest.current;
-    history.replaceState(null, '', href({ name: 'search', tags: terms }));
+    history.replaceState(history.state, '', href({ name: 'search', tags: terms })); // keep the router's entry number
     if (!terms.length) {
       setResult(undefined);
       setError(undefined);
@@ -68,6 +69,12 @@ export function Search({ tags }: { tags: string[] }) {
     );
     return () => clearTimeout(timer);
   }, [api, key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A photo opened from here can be swiped on to the next, in this order. Filed under the address as it now
+  // reads (the effect above keeps it in step with the words typed): that is where the photo's Back returns to.
+  useEffect(() => {
+    showingPhotos({ name: 'search', tags: terms }, result?.items ?? []);
+  }, [key, result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function show(forKey: string, r: SearchDto) {
     writeCache(`search:${forKey}`, r);

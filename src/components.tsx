@@ -4,7 +4,7 @@ import type { ItemSummaryDto } from '../core/api-types';
 import type { ApiClient } from './api';
 import { duration, durationWords, shortDate } from './format';
 import { AlbumsIcon, BackIcon, PlayIcon, SearchIcon, TimelineIcon, UploadIcon } from './icons';
-import { href, tabFor, type Route } from './router';
+import { goingBack, href, tabFor, type Route } from './router';
 
 type Tab = { tab: 'timeline' | 'albums' | 'search' | 'upload'; label: string; route: Route; icon: ReactNode };
 
@@ -50,29 +50,30 @@ export function useCached<T>(key: string, load: () => Promise<T>): {
   reload: () => void;
   set: (value: T) => void;
 } {
-  const [data, setData] = useState<T | undefined>(() => readCache<T>(key));
-  const [error, setError] = useState<string>();
+  // Kept with the key it belongs to: when the key changes (swiping to the next photo), that key's own data shows
+  // at once, never the last key's for a moment.
+  const [state, setState] = useState<{ key: string; data?: T; error?: string }>(() => ({ key, data: readCache<T>(key) }));
   const [tick, setTick] = useState(0);
   useEffect(() => {
     let live = true;
     const cached = readCache<T>(key);
-    setData(cached);
-    setError(undefined);
+    setState({ key, data: cached });
     fetchOnce(key, load)
-      .then((d) => live && setData(d))
-      .catch((e: Error) => live && !cached && setError(e.message));
+      .then((data) => live && setState({ key, data }))
+      .catch((e: Error) => live && !cached && setState({ key, error: e.message }));
     return () => {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, tick]);
+  const current = state.key === key ? state : { key, data: readCache<T>(key) };
   return {
-    data,
-    error,
+    data: current.data,
+    error: current.error,
     reload: () => setTick((t) => t + 1),
     set: (value: T) => {
       writeCache(key, value);
-      setData(value);
+      setState({ key, data: value });
     },
   };
 }
@@ -240,7 +241,7 @@ export function NavBar({
       >
         <div className="navbar-side">
           {back && (
-            <a className="icon-button glass" href={href(back.route)} aria-label={back.label}>
+            <a className="icon-button glass" href={href(back.route)} aria-label={back.label} onClick={goingBack}>
               <BackIcon />
             </a>
           )}
