@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { SearchDto } from '../../core/api-types';
 import { ErrorNotice, Grid, NavBar, useApi } from '../components';
+import { readCache, writeCache } from '../cache';
 import { ClearIcon, SearchIcon } from '../icons';
 import { href } from '../router';
 
@@ -14,11 +15,19 @@ function termsOf(text: string): string[] {
     .filter(Boolean);
 }
 
+const remembered = (key: string) => (key ? readCache<SearchDto>(`search:${key}`) : undefined);
+
+/** Whether `fresh` (a first page) is how `shown` (perhaps several pages) still begins. */
+function sameStart(shown: SearchDto, fresh: SearchDto): boolean {
+  return shown.count === fresh.count && fresh.items.every((item, i) => shown.items[i]?.id === item.id);
+}
+
 /** Results update as you type. Each comma-separated term matches the start of any word in a tag. */
 export function Search({ tags }: { tags: string[] }) {
   const api = useApi();
   const [text, setText] = useState(tags.join(', '));
-  const [result, setResult] = useState<SearchDto>();
+  // Back from a photo, the results are still here (and so is the place in them).
+  const [result, setResult] = useState(() => remembered(tags.join(',')));
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const latest = useRef(0);
@@ -40,15 +49,30 @@ export function Search({ tags }: { tags: string[] }) {
       return;
     }
     setBusy(true);
-    const timer = setTimeout(() => {
-      api
-        .search(terms)
-        .then((r) => request === latest.current && (setResult(r), setError(undefined)))
-        .catch((e: Error) => request === latest.current && setError(e.message))
-        .finally(() => request === latest.current && setBusy(false));
-    }, TYPING_PAUSE_MS);
+    const before = remembered(key);
+    if (before) setResult(before);
+    const timer = setTimeout(
+      () => {
+        api
+          .search(terms)
+          .then((r) => {
+            if (request !== latest.current) return;
+            // Nothing new at the top: keep every page already loaded.
+            if (!before || !sameStart(before, r)) show(key, r);
+            setError(undefined);
+          })
+          .catch((e: Error) => request === latest.current && setError(e.message))
+          .finally(() => request === latest.current && setBusy(false));
+      },
+      before ? 0 : TYPING_PAUSE_MS,
+    );
     return () => clearTimeout(timer);
   }, [api, key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function show(forKey: string, r: SearchDto) {
+    writeCache(`search:${forKey}`, r);
+    setResult(r);
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -61,7 +85,7 @@ export function Search({ tags }: { tags: string[] }) {
     setBusy(true);
     try {
       const next = await api.search(terms, result.cursor);
-      if (request === latest.current) setResult({ ...next, items: [...result.items, ...next.items] });
+      if (request === latest.current) show(key, { ...next, items: [...result.items, ...next.items] });
     } catch (e) {
       setError((e as Error).message);
     } finally {

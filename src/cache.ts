@@ -3,10 +3,14 @@
 // so the next launch starts with them too.
 //
 // Media links in the data are signed and stay valid for at least an hour (see the CloudFront adapter),
-// so nothing older than MAX_AGE is shown: its pictures might no longer load.
+// so nothing older than LINK_MAX_AGE is shown: its pictures might no longer load. The exception is what is saved
+// on the phone while its pictures are kept there too (media-cache.ts): that opens instantly however long ago it
+// was saved, and the fresh copy follows.
+import { forgetPictures, picturesKept } from './media-cache';
 
 const PREFIX = 'fa1:';
-const MAX_AGE_MS = 50 * 60 * 1000;
+const LINK_MAX_AGE_MS = 50 * 60 * 1000;
+const KEPT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 /** Only these are saved on the phone; the rest live in memory for the session. */
 const PERSISTED = new Set(['me', 'timeline', 'albums']);
 
@@ -23,9 +27,14 @@ export function disablePersistence(): void {
 
 export function readCache<T>(key: string): T | undefined {
   const entry = memory.get(key) ?? fromStorage(key);
-  if (!entry || Date.now() - entry.at > MAX_AGE_MS) return undefined;
+  if (!entry || Date.now() - entry.at > maxAge(key)) return undefined;
   memory.set(key, entry);
   return entry.data as T;
+}
+
+/** 'me' holds no links, so it never goes bad the way they do. */
+function maxAge(key: string): number {
+  return PERSISTED.has(key) && (key === 'me' || picturesKept()) ? KEPT_MAX_AGE_MS : LINK_MAX_AGE_MS;
 }
 
 export function writeCache<T>(key: string, data: T): void {
@@ -56,6 +65,8 @@ export function dropCache(key: string): void {
 /** On sign-out: the next person on this phone starts clean. */
 export function clearCache(): void {
   memory.clear();
+  thumbs.clear();
+  void forgetPictures();
   try {
     for (const k of Object.keys(localStorage)) if (k.startsWith(PREFIX)) localStorage.removeItem(k);
   } catch {

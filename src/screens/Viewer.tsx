@@ -6,7 +6,18 @@ import { AlbumAddIcon, ChevronIcon, CloseIcon, DownloadIcon, FolderIcon, PhotosI
 import { canSaveToPhotos, saveToFiles, saveToPhotos } from '../download';
 import { setFlash } from '../flash';
 import { thumbFor } from '../cache';
-import { href, navigate } from '../router';
+import { cameFrom, href, navigate, type Route } from '../router';
+
+const screenNames: Record<Route['name'], string> = {
+  timeline: 'Timeline',
+  item: 'photo',
+  search: 'search',
+  upload: 'Upload',
+  albums: 'albums',
+  album: 'album',
+  undated: 'photos without a date',
+  deleted: 'Recently deleted',
+};
 
 export function Viewer({ id }: { id: string }) {
   const api = useApi();
@@ -47,7 +58,8 @@ export function Viewer({ id }: { id: string }) {
     await act(() => api.setDate(id, date));
   }
 
-  const back = { route: { name: 'timeline' } as const, label: 'Back to Timeline' };
+  const from = cameFrom();
+  const back = { route: from, label: `Back to ${screenNames[from.name]}` };
   const nav = (title: string) => <NavBar large={false} back={back} title={title} />;
 
   if (error) return <main className="page push">{nav('')}<ErrorNotice message={error} retry={reload} /></main>;

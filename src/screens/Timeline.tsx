@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { ItemDetailDto, TimelineDto, TimelineMonthDto } from '../../core/api-types';
+import type { ItemDetailDto, ItemSummaryDto, TimelineDto, TimelineMonthDto } from '../../core/api-types';
 import { ErrorNotice, Grid, IconButton, Loading, NavBar, Sheet, useApi } from '../components';
 import { dayHeading, greeting, items, monthName, shortDate } from '../format';
 import { CalendarIcon, ChevronIcon, PlayIcon } from '../icons';
 import { takeFlash } from '../flash';
 import { fetchOnce, readCache, writeCache } from '../cache';
+import { picturesKept } from '../media-cache';
+import type { ApiClient } from '../api';
 import type { CachedTimeline } from '../cached-api';
 import { href } from '../router';
 
@@ -29,9 +31,27 @@ function merge(into: TimelineMonthDto[], more: TimelineMonthDto[]): TimelineMont
 /** Remembered Timelines older than this may hold expired photo links. */
 const TIMELINE_MAX_AGE_MS = 45 * 60 * 1000;
 
-function rememberedTimeline(): CachedTimeline | undefined {
+/**
+ * The Timeline as last shown. One with expired links (`stale`) is still good to open on while the phone keeps
+ * the pictures themselves; its links are then replaced as soon as fresh ones arrive.
+ */
+function rememberedTimeline(): (CachedTimeline & { stale: boolean }) | undefined {
   const t = readCache<CachedTimeline>('timeline');
-  return t && Date.now() - t.issuedAt < TIMELINE_MAX_AGE_MS ? t : undefined;
+  if (!t) return undefined;
+  const stale = Date.now() - t.issuedAt >= TIMELINE_MAX_AGE_MS;
+  return stale && !picturesKept() ? undefined : { ...t, stale };
+}
+
+/** The first page, asked for while the app is still checking who is signed in, so the two arrive together. */
+let early: Promise<TimelineDto> | undefined;
+
+export function startTimelineEarly(api: ApiClient): void {
+  if (early) return;
+  const asked = api.timeline();
+  early = asked;
+  asked.catch(() => {
+    if (early === asked) early = undefined;
+  });
 }
 
 const idsOf = (months: TimelineMonthDto[]) => months.flatMap((m) => m.days.flatMap((d) => d.items.map((i) => i.id)));
@@ -56,10 +76,13 @@ export function Timeline({ name }: { name?: string }) {
     if (!opts.quietly) setBusy(true);
     setError(undefined);
     try {
-      const res = await api.timeline({ cursor: opts.cursor, year: opts.year });
       const first = !opts.cursor && opts.year === undefined;
-      // Checking a remembered Timeline: nothing new at the top means keep everything already loaded.
-      if (opts.quietly && sameIds(idsOf(res.months), head.current)) return;
+      const asked = first ? early : undefined;
+      if (first) early = undefined;
+      const res = await (asked ?? api.timeline({ cursor: opts.cursor, year: opts.year }));
+      // Checking a remembered Timeline: nothing new at the top means keep everything already loaded,
+      // unless its links have expired.
+      if (opts.quietly && !remembered?.stale && sameIds(idsOf(res.months), head.current)) return;
       if (first) head.current = idsOf(res.months);
       if (opts.replace) issuedAt.current = Date.now();
       setPage(res);
@@ -124,7 +147,7 @@ export function Timeline({ name }: { name?: string }) {
 
       {showHero && (
         <>
-          <Hero id={months[0].days[0].items[0].id} greeting={greeting(name)} />
+          <Hero latest={months[0].days[0].items[0]} greeting={greeting(name)} />
           <MonthCards months={months} />
         </>
       )}
@@ -240,7 +263,8 @@ export function Timeline({ name }: { name?: string }) {
  * The top of the Timeline: the newest photo or video edge to edge, with the greeting and title over it,
  * like the opening of a photo book.
  */
-function Hero({ id, greeting }: { id: string; greeting: string }) {
+function Hero({ latest, greeting }: { latest: ItemSummaryDto; greeting: string }) {
+  const { id } = latest;
   const api = useApi();
   const [item, setItem] = useState(() => readCache<ItemDetailDto>(`item:${id}`));
   const [loaded, setLoaded] = useState<false | 'cached' | 'fresh'>(false);
@@ -255,7 +279,9 @@ function Hero({ id, greeting }: { id: string; greeting: string }) {
   const src = item && (item.kind === 'video' ? item.posterUrl ?? item.thumbUrl : item.displayUrl ?? item.thumbUrl);
   return (
     <a className="hero" href={href({ name: 'item', id })} aria-label="Open the latest photo">
-      {src ? (
+      {/* The small picture the Timeline already has, soft, until the full one fades in over it. */}
+      {loaded !== 'cached' && <img className="hero-under" src={latest.thumbUrl} alt="" />}
+      {src && (
         <img
           src={src}
           alt=""
@@ -263,8 +289,6 @@ function Hero({ id, greeting }: { id: string; greeting: string }) {
           ref={(img) => img?.complete && img.naturalWidth > 0 && !loaded && setLoaded('cached')}
           onLoad={() => setLoaded((l) => l || 'fresh')}
         />
-      ) : (
-        <span className="hero-blank shimmer" />
       )}
       <span className="hero-text">
         <span className="hero-greeting">{greeting}</span>

@@ -10,6 +10,7 @@ import { HttpApiClient } from './api';
 import { createDemoApi } from './demo';
 import { appReady } from './splash';
 import { clearCache, disablePersistence } from './cache';
+import { picturesKept } from './media-cache';
 
 // amplify_outputs.json exists only after `npx ampx sandbox` or an Amplify Hosting deploy.
 const found = import.meta.glob<{ default: Record<string, any> }>('../amplify_outputs.json', { eager: true });
@@ -22,7 +23,8 @@ if (outputs && apiUrl) {
   // Open connections to the API, photo server and sign-in service now, before the first request needs them.
   const mediaDomain: string | undefined = outputs.custom?.mediaDomain;
   preconnect(new URL(apiUrl).origin);
-  if (mediaDomain) preconnect(`https://${mediaDomain}`, false); // images load without CORS
+  // Images load without CORS, except through the service worker once it keeps them (media-cache.ts).
+  if (mediaDomain) preconnect(`https://${mediaDomain}`, picturesKept());
   if (outputs.auth?.aws_region) preconnect(`https://cognito-idp.${outputs.auth.aws_region}.amazonaws.com`);
   Amplify.configure(outputs);
   const api = new HttpApiClient(apiUrl, async () => (await fetchAuthSession()).tokens?.idToken?.toString());
