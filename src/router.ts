@@ -53,6 +53,13 @@ export function href(route: Route): string {
   }
 }
 
+/** The last screen shown that was not a single photo: where a photo's Back button returns to. */
+let lastList: Route = { name: 'timeline' };
+
+export function cameFrom(): Route {
+  return lastList;
+}
+
 export function navigate(route: Route): void {
   window.location.hash = href(route);
 }
@@ -60,7 +67,10 @@ export function navigate(route: Route): void {
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash));
   useEffect(() => {
-    const onChange = () => {
+    const onChange = (e: HashChangeEvent) => {
+      // From the address just left, not the last route seen: Search rewrites its address as you type.
+      const left = parseRoute(new URL(e.oldURL).hash);
+      if (left.name !== 'item') lastList = left;
       setRoute(parseRoute(window.location.hash));
       window.scrollTo(0, 0);
     };

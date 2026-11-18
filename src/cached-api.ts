@@ -17,8 +17,14 @@ export interface CachedTimeline {
 type Changes = { [K in keyof ApiClient]?: (args: Parameters<ApiClient[K]>, result: Awaited<ReturnType<ApiClient[K]>>) => void };
 
 const changes: Changes = {
-  addTag: ([id], item) => keepItem(id, item),
-  removeTag: ([id], item) => keepItem(id, item),
+  addTag: ([id], item) => {
+    keepItem(id, item);
+    dropCache('search:*');
+  },
+  removeTag: ([id], item) => {
+    keepItem(id, item);
+    dropCache('search:*');
+  },
   setDate: ([id], item) => {
     keepItem(id, item);
     dropCache('timeline');
@@ -30,6 +36,7 @@ const changes: Changes = {
     dropCache('undated');
     dropCache('albums');
     dropCache('album:*');
+    dropCache('search:*');
   },
   restoreItem: ([id], item) => {
     keepItem(id, item);
@@ -37,6 +44,7 @@ const changes: Changes = {
     dropCache('undated');
     dropCache('albums');
     dropCache('album:*');
+    dropCache('search:*');
   },
   createAlbum: () => dropCache('albums'),
   deleteAlbum: ([albumId]) => {

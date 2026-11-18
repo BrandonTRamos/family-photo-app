@@ -1889,13 +1889,16 @@ a.icon-button:hover {
 .hero:hover {
   color: #fff;
 }
-.hero img,
-.hero-blank {
+.hero img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.hero img.hero-under {
+  filter: blur(14px);
+  transform: scale(1.1); /* hides the blur's soft edges */
 }
 .hero img.loaded {
   animation: hero-in 1.2s var(--ease) both;

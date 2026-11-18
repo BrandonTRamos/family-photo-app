@@ -126,10 +126,12 @@
       (function () {
         var start = Date.now();
         // A returning visit with the Timeline remembered goes straight in: no minimum show time.
+        // Remembered links expire after about 45 minutes, unless the service worker keeps the pictures themselves.
         var minimum = 1500;
         try {
           var t = JSON.parse(localStorage.getItem('fa1:timeline') || 'null');
-          if (t && Date.now() - t.data.issuedAt < 45 * 60 * 1000) minimum = 0;
+          var kept = navigator.serviceWorker && navigator.serviceWorker.controller;
+          if (t && (kept || Date.now() - t.data.issuedAt < 45 * 60 * 1000)) minimum = 0;
         } catch (e) {}
         function hide() {
           var s = document.getElementById('splash');

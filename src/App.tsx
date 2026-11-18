@@ -1,14 +1,15 @@
 import { useEffect, useMemo } from 'react';
 import { ApiContext, ErrorNotice, Loading, Navigation, useApi, useCached } from './components';
 import type { ApiClient } from './api';
-import { href, useRoute } from './router';
+import { href, parseRoute, useRoute } from './router';
 import { useScrollMemory } from './scroll';
 import { appReady } from './splash';
 import { keepCacheFresh } from './cached-api';
+import { clearCache, readCache } from './cache';
 import { UpdateBanner } from './UpdateBanner';
 import { AlbumDetail, Albums } from './screens/Albums';
 import { Search } from './screens/Search';
-import { Timeline } from './screens/Timeline';
+import { startTimelineEarly, Timeline } from './screens/Timeline';
 import { Undated } from './screens/Undated';
 import { RecentlyDeleted } from './screens/RecentlyDeleted';
 import { Upload } from './screens/Upload';
@@ -31,6 +32,15 @@ function MembershipGate({ onSignOut, demo }: { onSignOut?: () => void; demo?: bo
   useEffect(() => {
     if (settled) appReady();
   }, [settled]);
+  // A first visit waits here to learn who this is: ask for the Timeline meanwhile, not afterwards.
+  useEffect(() => {
+    if (!readCache('me') && parseRoute(window.location.hash).name === 'timeline') startTimelineEarly(api);
+  }, [api]);
+  // No longer in the family: nothing of the Archive stays on this phone.
+  const removed = me.data?.member === false;
+  useEffect(() => {
+    if (removed) clearCache();
+  }, [removed]);
   if (me.error) {
     return (
       <div className="center">
