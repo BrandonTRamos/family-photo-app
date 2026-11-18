@@ -45,6 +45,17 @@ export const CloseIcon = () => (
     <path d="M6 6l12 12M18 6L6 18" />
   </svg>
 );
+/** Small marks for an upload that worked or didn't; sized to sit in a 22px circle. */
+export const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" {...stroke} strokeWidth={2.8}>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+);
+export const AlertIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" {...stroke} strokeWidth={2.8}>
+    <path d="M12 6v7.5M12 17.6v.4" />
+  </svg>
+);
 export const PlayIcon = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
     <path d="M6 3l15 9-15 9z" />

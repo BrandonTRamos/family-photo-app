@@ -11,6 +11,9 @@
   --accent: #2b6a8a;
   --accent-dark: #1d4e67;
   --danger: #b3261e;
+  --danger-soft: #fbe8e6;
+  --ok: #1e7b45;
+  --ok-soft: #e4f3e9;
   --serif: var(--sans);
   --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
   --shadow: 0 1px 2px rgba(27, 42, 53, 0.08), 0 4px 12px rgba(27, 42, 53, 0.1);
@@ -1761,6 +1764,87 @@ a.icon-button:hover {
 .choose svg {
   color: var(--accent);
 }
+
+/* Upload results: green for what made it, red for what didn't. Each row is its own rounded tile so it can take the tint. */
+.upload-list.list-group {
+  gap: 8px;
+  border-radius: 0;
+  overflow: visible;
+  background: none;
+}
+.upload-list.list-group > li + li {
+  border-top: 0;
+}
+.upload-list .file-row {
+  border-radius: 16px;
+  transition: background 0.25s var(--ease);
+}
+.upload-list .file-row.ok {
+  background: var(--ok-soft);
+}
+.upload-list .file-row.bad {
+  background: var(--danger-soft);
+}
+.file-row .state {
+  font-weight: 500;
+}
+.file-row.ok .state {
+  color: var(--ok);
+}
+.file-row.bad .state,
+.file-row.bad .icon-button {
+  color: var(--danger);
+}
+.file-row .thumb-wrap {
+  position: relative;
+  flex: none;
+}
+.upload-mark {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: 0 0 0 2px #fff;
+}
+.upload-mark.ok {
+  background: var(--ok);
+}
+.upload-mark.bad {
+  background: var(--danger);
+}
+.card.done {
+  background: var(--ok-soft);
+}
+.card.done strong {
+  color: var(--ok);
+}
+.card.done .button.secondary {
+  background: var(--print);
+}
+.card.failed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  background: var(--danger-soft);
+}
+.card.failed strong {
+  color: var(--danger);
+}
+.card.failed .button {
+  margin-top: 6px;
+  background: var(--danger);
+}
+.card.failed .button:hover {
+  background: #8f1e18;
+}
+
 .sheet {
   background: var(--print);
 }

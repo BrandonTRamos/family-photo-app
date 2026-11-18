@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PHOTO_TYPES, VIDEO_TYPES } from '../../core/api-types';
 import { ErrorNotice, NavBar, useApi, useCached } from '../components';
 import { duration, shortDate } from '../format';
-import { CloseIcon, SparkleIcon, UploadIcon } from '../icons';
+import { AlertIcon, CheckIcon, CloseIcon, SparkleIcon, UploadIcon } from '../icons';
 import { href } from '../router';
 import { readFileDate } from '../file-date';
-import { UploadSession } from '../upload-session';
+import { UploadSession, failureMessage } from '../upload-session';
 
 interface Selected {
   key: string;
@@ -80,14 +80,17 @@ export function Upload() {
         update(o.key, o.ok ? { state: 'done', progress: 1, itemId: o.itemId } : { state: 'failed', message: o.message });
       }
     } catch (e) {
-      for (const f of waiting) update(f.key, { state: 'failed', message: (e as Error).message });
+      for (const f of waiting) update(f.key, { state: 'failed', message: failureMessage(e) });
     } finally {
       setBusy(false);
     }
   }
 
-  const pending = files.filter((f) => f.state === 'waiting' || f.state === 'failed').length;
+  const waiting = files.filter((f) => f.state === 'waiting').length;
+  const failed = files.filter((f) => f.state === 'failed');
+  const pending = waiting + failed.length;
   const done = files.filter((f) => f.state === 'done').length;
+  const failedNoun = failed.every((f) => f.kind === 'photo') ? 'photo' : failed.every((f) => f.kind === 'video') ? 'video' : 'item';
 
   return (
     <main className="page">
@@ -107,13 +110,25 @@ export function Upload() {
           <h2 className="section-title">
             {files.length} selected
           </h2>
-          <ul className="file-list list-group">
+          <ul className="file-list list-group upload-list">
             {files.map((f) => (
-              <li key={f.key} className="file-row">
-                {f.kind === 'photo' ? <img className="thumb" src={f.preview} alt="" /> : <span className="thumb">Video</span>}
+              <li key={f.key} className={`file-row${f.state === 'done' ? ' ok' : f.state === 'failed' ? ' bad' : ''}`}>
+                <span className="thumb-wrap">
+                  {f.kind === 'photo' ? <img className="thumb" src={f.preview} alt="" /> : <span className="thumb">Video</span>}
+                  {f.state === 'done' && (
+                    <span className="upload-mark ok">
+                      <CheckIcon />
+                    </span>
+                  )}
+                  {f.state === 'failed' && (
+                    <span className="upload-mark bad">
+                      <AlertIcon />
+                    </span>
+                  )}
+                </span>
                 <div className="info">
                   <strong>{f.kind === 'video' ? `Video${f.durationMs ? ` · ${duration(f.durationMs)}` : ''}` : 'Photo'}</strong>
-                  <span className="muted">
+                  <span className={f.state === 'done' || f.state === 'failed' ? 'state' : 'muted'}>
                     {f.state === 'done'
                       ? 'Uploaded. It will appear on the Timeline shortly.'
                       : f.state === 'sending'
@@ -188,14 +203,33 @@ export function Upload() {
       {done > 0 && pending === 0 && !busy && (
         <div className="card done">
           <strong>All uploaded. Thank you!</strong>
-          <span className="muted">They'll appear on the Timeline in a moment.</span>
+          <span>They'll appear on the Timeline in a moment.</span>
           <a className="button secondary" href={href({ name: 'timeline' })}>
             See the Timeline
           </a>
         </div>
       )}
 
-      {pending > 0 && (
+      {failed.length > 0 && !busy && (
+        <div className="card failed" role="alert">
+          <strong>
+            {failed.length} {failedNoun}
+            {failed.length === 1 ? '' : 's'} didn't upload
+          </strong>
+          <span>
+            {done === 0
+              ? 'Nothing was added to the Archive.'
+              : `${done === 1 ? 'The other one is' : `The other ${done} are`} safely in the Archive.`}
+          </span>
+          {waiting === 0 && (
+            <button type="button" className="button" onClick={send}>
+              Try again
+            </button>
+          )}
+        </div>
+      )}
+
+      {waiting > 0 && (
         <div className="sticky-action">
           <button type="button" className="button block" disabled={busy} onClick={send}>
             {busy ? 'Uploading…' : `Upload ${pending} item${pending === 1 ? '' : 's'}`}
