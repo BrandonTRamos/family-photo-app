@@ -2,7 +2,7 @@
 // A file that failed is retried on the same Item while its grant is still valid, so a retry never leaves a
 // half-made upload behind.
 import type { UploadGrantDto } from '../core/api-types';
-import type { ApiClient } from './api';
+import { ApiError, type ApiClient } from './api';
 
 export interface UploadFile {
   /** Stable per chosen file, so a retry finds the earlier attempt. */
@@ -12,6 +12,15 @@ export interface UploadFile {
 }
 
 export type UploadOutcome = { key: string; ok: true; itemId: string } | { key: string; ok: false; message: string; itemId?: string };
+
+/**
+ * What to tell a family member when a send fails. The Archive's own messages are already written for people;
+ * anything else (no signal, storage refusing the bytes) would read as jargon, so it gets plain words.
+ */
+export function failureMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.message;
+  return "This didn't go through. Check your connection and try again.";
+}
 
 /** Grants are signed for 6 hours; past 5, ask for a new one rather than risk it expiring mid-send. */
 const GRANT_REUSE_MS = 5 * 60 * 60 * 1000;
@@ -52,7 +61,7 @@ export class UploadSession {
           this.started.delete(f.key);
           return { key: f.key, ok: true, itemId };
         } catch (err) {
-          return { key: f.key, ok: false, message: (err as Error).message, itemId };
+          return { key: f.key, ok: false, message: failureMessage(err), itemId };
         }
       }),
     );
